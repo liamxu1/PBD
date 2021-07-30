@@ -6,8 +6,9 @@ This repository is built based on GLFW and imGui. I especially refer to the repo
 
 # Progress
 
-- [ ] XPBD
+- [x] XPBD
 - [ ] Continuous Material
 - [ ] SPH (MLS-PBD)
 - [ ] Projective Dynamics (Common & Chebyshev & Quasi Newton)
+- [ ] Improve velocity damping method
 
