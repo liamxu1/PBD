@@ -21,6 +21,8 @@ struct Configuration {
     vector<Constraint*> constraints;
     vector<CollisionConstraint*> collisionConstraints;
 
+    vector<float> lambda; //for xpbd
+
     ~Configuration() {
         for (Mesh* mesh : staticObjects) delete mesh;
         for (Mesh* mesh : simulatedObjects) delete mesh;

@@ -17,10 +17,23 @@ using namespace Eigen;
 class Mesh;
 struct Configuration;
 
+enum class PBDType
+{
+    normalPBD,
+    XPBD,
+    none
+};
+
 struct Params {
     int solverIterations;
     float stretchFactor;
     float bendFactor;
+    float timeStep;
+    
+    // for xpbd
+    float compliance;
+    
+    PBDType type = PBDType::none;
 };
 
 class Constraint {
@@ -28,13 +41,14 @@ class Constraint {
 public:
     Constraint(Mesh* mesh, int cardinality) :
             mesh(mesh), cardinality(cardinality) {}
-    virtual void preCompute(Configuration* configuration) {}
+    void preCompute(Configuration* configuration);
     virtual void project(Configuration* configuration, Params params) {}
 
     int cardinality;
     vector<int> indices;
     Mesh* mesh;
     MatrixXf coefficients;
+    vector<float> inverseMasses;
 
 };
 
@@ -54,11 +68,9 @@ class DistanceConstraint : public Constraint {
 public:
     DistanceConstraint(Mesh* mesh, int cardinality, float distance) :
             Constraint(mesh, cardinality), distance(distance) {}
-    void preCompute(Configuration* configuration);
     void project(Configuration* configuration, Params params);
 
     float distance;
-
 };
 
 class BendConstraint : public Constraint {

@@ -6,6 +6,12 @@
 #include <main.hpp>
 #include <constraint.hpp>
 
+void Constraint::preCompute(Configuration* configuration) {
+    inverseMasses.resize(cardinality);
+    for (int i = 0; i < cardinality; i++)
+        inverseMasses[i] = configuration->inverseMasses[indices[i]];
+}
+
 void buildEdgeConstraints(Configuration* configuration, Mesh* mesh) {
 
     // Build a distance constraint along each edge
@@ -55,9 +61,13 @@ void buildBendConstraints(Configuration* configuration, Mesh* mesh) {
             if (p1 != p && p2 != p) p4 = p;
         }
 
+        Vector3f p2_ = mesh->vertices[p2] - mesh->vertices[p1], p3_ = mesh->vertices[p3] - mesh->vertices[p1], p4_ = mesh->vertices[p4] - mesh->vertices[p1];
+
         // Compute the initial dot product between the two triangles
-        Vector3f n1 = mesh->vertices[p2].cross(mesh->vertices[p3]) / mesh->vertices[p2].cross(mesh->vertices[p3]).norm();
-        Vector3f n2 = mesh->vertices[p2].cross(mesh->vertices[p4]) / mesh->vertices[p2].cross(mesh->vertices[p4]).norm();
+        Vector3f n1 = p2_.cross(p3_);
+        Vector3f n2 = p2_.cross(p4_);
+        n1.normalize();
+        n2.normalize();
         float d = n1.dot(n2);
 
         buildBendConstraint(configuration, mesh, p1, p2, p3, p4, acosf(d));
@@ -112,6 +122,7 @@ void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, i
     constraint->indices.push_back(indexC + mesh->estimatePositionsOffset);
     constraint->indices.push_back(indexD + mesh->estimatePositionsOffset);
 
+    constraint->preCompute(configuration);
     configuration->constraints.push_back(constraint);
 }
 
@@ -133,96 +144,153 @@ CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexInde
 }
 
 void FixedConstraint::project(Configuration* configuration, Params params) {
+    if (params.type == PBDType::none)
+    {
+        cout << "Fixed constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
+        return;
+    }
     configuration->estimatePositions[indices[0]] = target;
 }
 
-void DistanceConstraint::preCompute(Configuration* configuration) {
-    coefficients.resize(cardinality, cardinality);
-    coefficients.setZero();
-
-    float w1 = configuration->inverseMasses[indices[0]];
-    float w2 = configuration->inverseMasses[indices[1]];
-    coefficients.coeffRef(0, 0) = 1.0f / (w1 / (w1 + w2));
-    coefficients.coeffRef(1, 1) = 1.0f / (w2 / (w1 + w2));
-}
-
 void DistanceConstraint::project(Configuration* configuration, Params params) {
-    MatrixXf RHS = MatrixXf::Zero(cardinality, 3);
+    
+    assert(cardinality == 2);
+
+    float w1 = inverseMasses[0], w2 = inverseMasses[1];
+    if (w1 + w2 < EPSILON) return;
 
     Vector3f p1 = configuration->estimatePositions[indices[0]];
     Vector3f p2 = configuration->estimatePositions[indices[1]];
 
     float a = (p1 - p2).norm() - distance;
-    Vector3f b = (p1 - p2) / ((p1 - p2).norm() + EPSILON);
+    Vector3f n = (p1 - p2) / ((p1 - p2).norm() + EPSILON);
+    Vector3f b = n * a;
 
-    RHS.row(0) = -a * b;
-    RHS.row(1) = a * b;
+    switch (params.type)
+    {
+    case PBDType::normalPBD:
+    {
+        vector<float> coef = { -w1 / (w1 + w2),w2 / (w1 + w2) };
+        for (int i = 0; i < cardinality; i++) {
+            Vector3f displacement = coef[i] * b;
+            float k = 1.0f - pow(1.0f - params.stretchFactor, 1.0f / params.solverIterations);
+            configuration->estimatePositions[indices[i]] += k * displacement;
+        }
+        break;
+    }
 
-    MatrixXf displacements = coefficients.llt().solve(RHS);
+    case PBDType::XPBD:
+    {
+        float alpha = params.compliance / powf(params.timeStep, 2);
+        float lambda1 = configuration->lambda[indices[0]], lambda2 = configuration->lambda[indices[1]];
+        float dlambda1 = (-a - alpha * lambda1) / (w1 + w2 + alpha), dlambda2 = (-a - alpha * lambda2) / (w1 + w2 + alpha);
 
-    for (int i = 0; i < cardinality; i++) {
-        Vector3f displacement = displacements.row(i);
-        float k;
-        if (mesh->isRigidBody) k = 0.25f;
-        else k = 1.0f - pow(1.0f - params.stretchFactor, 1.0f / params.solverIterations);
-        configuration->estimatePositions[indices[i]] += k * displacement;
+        configuration->lambda[indices[0]] += dlambda1;
+        configuration->lambda[indices[1]] += dlambda2;
+
+        vector<float> coef = { w1 * dlambda1,-w2 * dlambda2 };
+
+        for (int i = 0; i < cardinality; i++) {
+            Vector3f displacement = coef[i] * n;
+            configuration->estimatePositions[indices[i]] += displacement;
+        }
+        break;
+
+    }
+
+    default:
+    {
+        cout << "Distance constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
+        break;
+    }
     }
 }
 
 void BendConstraint::project(Configuration* configuration, Params params) {
-    MatrixXf RHS = MatrixXf::Zero(cardinality, 3);
+    assert(cardinality == 4);
 
     Vector3f p1 = configuration->estimatePositions[indices[0]];
     Vector3f p2 = configuration->estimatePositions[indices[1]];
     Vector3f p3 = configuration->estimatePositions[indices[2]];
     Vector3f p4 = configuration->estimatePositions[indices[3]];
+    p2 -= p1, p3 -= p1, p4 -= p1;
 
     Vector3f p2Xp3 = p2.cross(p3);
     Vector3f p2Xp4 = p2.cross(p4);
 
+    float p2Xp3Norm = p2Xp3.norm(), p2Xp4Norm = p2Xp4.norm();
+    if (p2Xp3Norm < EPSILON || p2Xp4Norm < EPSILON)
+    {
+        //cout << "p2\n" << p2 << '\n' << "p3\n" << p3 << '\n' << "p4\n" << p4 << '\n';
+        return;
+    }
+
     // Compute normals
-    Vector3f n1 = p2Xp3 / p2Xp3.norm();
-    Vector3f n2 = p2Xp4 / p2Xp4.norm();
+    Vector3f n1 = p2Xp3 / p2Xp3Norm;
+    Vector3f n2 = p2Xp4 / p2Xp4Norm;
     float d = n1.dot(n2);
-
-    Vector3f q3 = (p2.cross(n2) + d * n1.cross(p2)) / (p2Xp3.norm());
-    Vector3f q4 = (p2.cross(n1) + d * n2.cross(p2)) / (p2Xp4.norm());
-    Vector3f q2 = -(p3.cross(n2) + d * n1.cross(p3)) / (p2Xp3.norm()) - (p4.cross(n1) + d * n2.cross(p4)) / (p2Xp4.norm());
-    Vector3f q1 = -q2 - q3 - q4;
-
-    float qSum = q1.squaredNorm() + q2.squaredNorm() + q3.squaredNorm() + q4.squaredNorm();
-
-    // Compute coefficient matrix
-    coefficients.resize(cardinality, cardinality);
-    coefficients.setZero();
-
-    float denominator = 0.0f;
-    for (int i = 0; i < cardinality; i++) {
-        denominator += configuration->inverseMasses[indices[i]] * qSum;
-    }
-
-    for (int i = 0; i < cardinality; i++) {
-        float wi = configuration->inverseMasses[indices[i]];
-        coefficients.coeffRef(i, i) = 1.0f / (wi / denominator);
-    }
 
     // Prevent issue where d falls out of range -1 to 1
     d = fmax(fmin(d, 1.0f), -1.0f);
 
-    float a = sqrtf(1.0f - d * d) * (acosf(d) - angle);
-    RHS.row(0) = -a * q1;
-    RHS.row(1) = -a * q2;
-    RHS.row(2) = -a * q3;
-    RHS.row(3) = -a * q4;
+    Vector3f q3 = (p2.cross(n2) + d * n1.cross(p2)) / p2Xp3Norm;
+    Vector3f q4 = (p2.cross(n1) + d * n2.cross(p2)) / p2Xp4Norm;
+    Vector3f q2 = -(p3.cross(n2) + d * n1.cross(p3)) / p2Xp3Norm - (p4.cross(n1) + d * n2.cross(p4)) / p2Xp4Norm;
+    Vector3f q1 = -q2 - q3 - q4;
 
-    MatrixXf displacements = coefficients.llt().solve(RHS);
+    float qSum = inverseMasses[0] * q1.squaredNorm() + inverseMasses[1] * q2.squaredNorm() + inverseMasses[2] * q3.squaredNorm() + inverseMasses[3] * q4.squaredNorm();
 
-    for (int i = 0; i < cardinality; i++) {
-        Vector3f displacement = displacements.row(i);
-        float k;
-        if (mesh->isRigidBody) k = 0.25f;
-        else k = 1.0f - pow(1.0f - params.bendFactor, 1.0f / params.solverIterations);
-        configuration->estimatePositions[indices[i]] += k * displacement;
+    if (qSum < EPSILON)
+    {
+        return;
+    }
+
+    float a = sqrtf(1.0f - d * d) * (acosf(d) - angle) / qSum;
+
+    switch (params.type)
+    {
+    case PBDType::normalPBD:
+    {
+        vector<Vector3f> displacements = { -a * q1,-a * q2,-a * q3,-a * q4 };
+
+        for (int i = 0; i < cardinality; i++) {
+            float k = 1.0f - pow(1.0f - params.bendFactor, 1.0f / params.solverIterations);
+            configuration->estimatePositions[indices[i]] += k * displacements[i] * inverseMasses[i];
+        }
+        break;
+    }
+
+    case PBDType::XPBD:
+    {
+        float alpha = params.compliance / powf(params.timeStep, 2);
+        float delta = qSum / (1 - powf(d, 2) + EPSILON);
+        float c = acosf(d) - angle;
+
+        vector<float> dlambda(4, 0.0f);
+
+        //cout << alpha << '\n';
+
+        for (int i = 0; i < cardinality; i++)
+        {
+            float lambda = configuration->lambda[indices[i]];
+            dlambda[i] = (-c - alpha * lambda) / (delta + alpha);
+            lambda = configuration->lambda[indices[i]] += dlambda[i];
+        }
+
+        vector<Vector3f> displacements = { q1,q2,q3,q4 };
+
+        for (int i = 0; i < cardinality; i++) {
+            Vector3f displacement = displacements[i] * inverseMasses[i] * dlambda[i] * (sqrtf(1 - powf(d, 2) + EPSILON));
+            configuration->estimatePositions[indices[i]] += displacement;
+        }
+        break;
+    }
+
+    default:
+    {
+        cout << "Bend constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
+        break;
+    }
     }
 }
 

@@ -17,7 +17,7 @@ Scene::Scene() {
     setupConfigurationB();
     setupConfigurationC();
     setupConfigurationD();
-    currentConfiguration = configurationA;
+    currentConfiguration = configurationC;
 }
 
 Scene::~Scene() {
@@ -244,4 +244,5 @@ void Scene::setupEstimatePositionOffsets(Configuration* configuration) {
     }
 
     configuration->estimatePositions.resize((size_t) totalNumVertices, Vector3f::Zero());
+    configuration->lambda.resize((size_t)totalNumVertices, 0.0f);
 }

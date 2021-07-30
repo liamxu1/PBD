@@ -22,6 +22,8 @@ float mouseY = 0.0f;
 // Instances
 Simulation* simulation;
 
+bool resetStatus = false;
+
 void mouseMovedCallback(GLFWwindow* win, double xPos, double yPos) {
     float xChange =  (float) xPos - mouseX;
     float yChange =  (float) yPos - mouseY;
@@ -44,7 +46,10 @@ void mouseButtonCallback(GLFWwindow *win, int button, int action, int mods) {
 
 void keyCallback(GLFWwindow *win, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_SPACE) simulation->reset();
+        if (key == GLFW_KEY_SPACE) {
+            resetStatus = true;
+            cout << "resetting...\n";
+        }
     }
 
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
@@ -180,6 +185,12 @@ int main() {
 
         // Update simulation
         simulation->update();
+
+        if (resetStatus)
+        {
+            resetStatus = false;
+            simulation->reset();
+        }
 
         // Render gui
         simulation->renderGUI();

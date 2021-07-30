@@ -24,14 +24,16 @@ public:
     void renderGUI();
 
     // Variables
-    int solverIterations = 4;
+    int solverIterations = 20;
     float timeStep = 0.03f;
     float gravity = 0.981f;
     float windSpeed = 1.5f;
+    float compliance = 1e-7;
     float velocityDamping = 0.999f;
     float stretchFactor = 0.999f;
     float bendFactor = 0.3f;
-    bool wireframe = false;
+    bool wireframe = true;
+    int type = 1;
 
     // Scene
     Scene* scene;
