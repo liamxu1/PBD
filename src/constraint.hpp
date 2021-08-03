@@ -32,6 +32,7 @@ struct Params {
     
     // for xpbd
     float compliance;
+    float dampStiffness;
     
     PBDType type = PBDType::none;
 };

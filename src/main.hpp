@@ -15,6 +15,7 @@
 
 // Constants
 const float EPSILON = 0.000001f;
+const float EPSILONTHRESHOLD = 10 * EPSILON;
 
 // Paths
 static const char* SHADER_PATH = "resources/shaders/";

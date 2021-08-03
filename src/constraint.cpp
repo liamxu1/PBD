@@ -92,6 +92,7 @@ void buildTwoWayCouplingConstraints(Configuration* configuration, Mesh* meshA) {
 
 void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, Vector3f target) {
     configuration->inverseMasses[index + mesh->estimatePositionsOffset] = EPSILON;
+    mesh->inverseMass[index] = EPSILON;
 
     Constraint* constraint = new FixedConstraint(mesh, 1, target);
     constraint->indices.push_back(index + mesh->estimatePositionsOffset);
@@ -157,7 +158,7 @@ void DistanceConstraint::project(Configuration* configuration, Params params) {
     assert(cardinality == 2);
 
     float w1 = inverseMasses[0], w2 = inverseMasses[1];
-    if (w1 + w2 < EPSILON) return;
+    if (w1 + w2 < EPSILONTHRESHOLD) return;
 
     Vector3f p1 = configuration->estimatePositions[indices[0]];
     Vector3f p2 = configuration->estimatePositions[indices[1]];
@@ -182,8 +183,11 @@ void DistanceConstraint::project(Configuration* configuration, Params params) {
     case PBDType::XPBD:
     {
         float alpha = params.compliance / powf(params.timeStep, 2);
+        float gamma = alpha * params.dampStiffness * params.timeStep;
         float lambda1 = configuration->lambda[indices[0]], lambda2 = configuration->lambda[indices[1]];
-        float dlambda1 = (-a - alpha * lambda1) / (w1 + w2 + alpha), dlambda2 = (-a - alpha * lambda2) / (w1 + w2 + alpha);
+        Vector3f pOrigin1 = configuration->currentPositions[indices[0]], pOrigin2 = configuration->currentPositions[indices[1]];
+        float d1 = n.dot(p1 - pOrigin1), d2 = -n.dot(p2 - pOrigin2);
+        float dlambda1 = (-a - alpha * lambda1 - gamma * d1) / ((w1 + w2) * (1 + gamma) + alpha), dlambda2 = (-a - alpha * lambda2 - gamma * d2) / ((w1 + w2) * (1 + gamma) + alpha);
 
         configuration->lambda[indices[0]] += dlambda1;
         configuration->lambda[indices[1]] += dlambda2;
@@ -219,7 +223,7 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     Vector3f p2Xp4 = p2.cross(p4);
 
     float p2Xp3Norm = p2Xp3.norm(), p2Xp4Norm = p2Xp4.norm();
-    if (p2Xp3Norm < EPSILON || p2Xp4Norm < EPSILON)
+    if (p2Xp3Norm < EPSILONTHRESHOLD || p2Xp4Norm < EPSILONTHRESHOLD)
     {
         //cout << "p2\n" << p2 << '\n' << "p3\n" << p3 << '\n' << "p4\n" << p4 << '\n';
         return;
@@ -240,7 +244,7 @@ void BendConstraint::project(Configuration* configuration, Params params) {
 
     float qSum = inverseMasses[0] * q1.squaredNorm() + inverseMasses[1] * q2.squaredNorm() + inverseMasses[2] * q3.squaredNorm() + inverseMasses[3] * q4.squaredNorm();
 
-    if (qSum < EPSILON)
+    if (qSum < EPSILONTHRESHOLD)
     {
         return;
     }
@@ -263,21 +267,26 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     case PBDType::XPBD:
     {
         float alpha = params.compliance / powf(params.timeStep, 2);
+        float gamma = alpha * params.dampStiffness * params.timeStep;
         float delta = qSum / (1 - powf(d, 2) + EPSILON);
         float c = acosf(d) - angle;
 
         vector<float> dlambda(4, 0.0f);
 
-        //cout << alpha << '\n';
+        vector<Vector3f> displacements = { q1,q2,q3,q4 };
+
+        vector<Vector3f> move(cardinality);
+        for (int i = 0; i < cardinality; i++)
+        {
+            move[i] = configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]];
+        }
 
         for (int i = 0; i < cardinality; i++)
         {
             float lambda = configuration->lambda[indices[i]];
-            dlambda[i] = (-c - alpha * lambda) / (delta + alpha);
+            dlambda[i] = (-c - alpha * lambda - gamma * displacements[i].dot(move[i])) / (delta * (1 + gamma) + alpha);
             lambda = configuration->lambda[indices[i]] += dlambda[i];
         }
-
-        vector<Vector3f> displacements = { q1,q2,q3,q4 };
 
         for (int i = 0; i < cardinality; i++) {
             Vector3f displacement = displacements[i] * inverseMasses[i] * dlambda[i] * (sqrtf(1 - powf(d, 2) + EPSILON));

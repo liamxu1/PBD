@@ -54,6 +54,8 @@ public:
     bool intersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, Vector3f &normal, int vertexIndex, int &triangleIndex);
     void render(Camera* camera, Matrix4f transform);
 
+    void dampVelocity(float kDamp = 0.1f, int type = 1);
+
     int numVertices;
     int numFaces;
 
@@ -71,7 +73,7 @@ public:
 
     // Simulation fields
     vector<Vector3f> velocities;
-    float inverseMass;
+    vector<float> inverseMass;
     int estimatePositionsOffset;
     bool isRigidBody = false;
     bool gravityAffected = false;

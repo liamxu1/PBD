@@ -33,7 +33,11 @@ void Scene::reset() {
         mesh->reset();
     }
 
-    currentConfiguration->estimatePositions.resize(currentConfiguration->estimatePositions.size(), Vector3f::Zero());
+    size_t numPositions = currentConfiguration->estimatePositions.size();
+    currentConfiguration->estimatePositions.clear();
+    currentConfiguration->currentPositions.clear();
+    currentConfiguration->estimatePositions.resize(numPositions, Vector3f::Zero());
+    currentConfiguration->currentPositions.resize(numPositions, Vector3f::Zero());
 }
 
 void Scene::setConfiguration(int index) {
@@ -240,9 +244,10 @@ void Scene::setupEstimatePositionOffsets(Configuration* configuration) {
         mesh->estimatePositionsOffset = totalNumVertices;
         totalNumVertices += mesh->numVertices;
 
-        for (int i = 0; i < mesh->numVertices; i++) configuration->inverseMasses.push_back(mesh->inverseMass);
+        for (int i = 0; i < mesh->numVertices; i++) configuration->inverseMasses.push_back(mesh->inverseMass[i]);
     }
 
     configuration->estimatePositions.resize((size_t) totalNumVertices, Vector3f::Zero());
+    configuration->currentPositions.resize((size_t)totalNumVertices, Vector3f::Zero());
     configuration->lambda.resize((size_t)totalNumVertices, 0.0f);
 }

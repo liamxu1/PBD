@@ -17,6 +17,7 @@ struct Configuration {
     vector<Mesh*> staticObjects;
     vector<Mesh*> simulatedObjects;
     vector<Vector3f> estimatePositions;
+    vector<Vector3f> currentPositions;
     vector<float> inverseMasses;
     vector<Constraint*> constraints;
     vector<CollisionConstraint*> collisionConstraints;

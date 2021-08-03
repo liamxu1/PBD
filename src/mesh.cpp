@@ -7,8 +7,24 @@
 #include <sstream>
 #include <shaderLoader.hpp>
 #include <mesh.hpp>
+#include <main.hpp>
 
-Mesh::Mesh(string filename, Vector3f colour, float inverseMass) : colour(colour), inverseMass(inverseMass) {
+Matrix3f CrossMat(Vector3f vec)
+{
+    Matrix3f mat;
+    mat(0, 0) = 0;
+    mat(0, 1) = -vec[2];
+    mat(0, 2) = vec[1];
+    mat(1, 0) = vec[2];
+    mat(1, 1) = 0;
+    mat(1, 2) = -vec[0];
+    mat(2, 0) = -vec[1];
+    mat(2, 1) = vec[0];
+    mat(2, 2) = 0;
+    return mat;
+}
+
+Mesh::Mesh(string filename, Vector3f colour, float inverseMass) : colour(colour){
     parseObjFile(filename);
 
     initialVertices = vertices;
@@ -22,6 +38,7 @@ Mesh::Mesh(string filename, Vector3f colour, float inverseMass) : colour(colour)
 
     // Setup simulation
     reset();
+    this->inverseMass.resize((size_t)numVertices, inverseMass);
 }
 
 Mesh::~Mesh() {
@@ -202,6 +219,65 @@ void Mesh::render(Camera* camera, Matrix4f transform) {
     glDrawArrays(GL_TRIANGLES, 0, outVertices.size());
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
+}
+
+void Mesh::dampVelocity(float kDamp, int type)
+{
+    switch (type)
+    {
+    case 0:
+        break;
+    case 1:
+    {
+        #pragma omp parallel for
+        for (int i = 0; i < numVertices; i++) {
+            velocities[i] *= 1 - kDamp;
+        }
+        break;
+    }
+    
+    case 2:
+    {
+        size_t n = numVertices;
+        Vector3f pos = Vector3f::Zero();
+        Vector3f vel = Vector3f::Zero();
+        float total_mass = 0;
+        for (size_t i = 0; i < n; i++)
+        {
+            if (inverseMass[i] < EPSILONTHRESHOLD)
+                continue;
+            pos += vertices[i] / inverseMass[i];
+            vel += velocities[i] / inverseMass[i];
+            total_mass += 1.f / inverseMass[i];
+        }
+        Matrix3f I = Matrix3f::Zero();
+        Vector3f L = Vector3f::Zero();
+        vel = vel / total_mass;
+        pos = pos / total_mass;
+        for (size_t i = 0; i < n; i++)
+        {
+            if (inverseMass[i] < EPSILONTHRESHOLD)
+                continue;
+            Vector3f posi = vertices[i] - pos;
+            Matrix3f posi_mat = CrossMat(posi);
+            L += posi_mat * velocities[i] / inverseMass[i];
+            I += posi_mat * posi_mat.transpose() / inverseMass[i];
+        }
+        Vector3f angular_velocity = I.inverse() * L;
+        for (size_t i = 0; i < n; i++)
+        {
+            if (inverseMass[i] < EPSILONTHRESHOLD)
+                continue;
+            Vector3f dv = vel + angular_velocity.cross(vertices[i] - pos) - velocities[i];
+            velocities[i] = velocities[i] + kDamp * dv;
+        }
+
+        break;
+    }
+
+    default:
+        break;
+    }
 }
 
 void Mesh::parseObjFile(string filename) {

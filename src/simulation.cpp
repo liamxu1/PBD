@@ -44,27 +44,26 @@ void Simulation::simulate(Configuration *configuration) {
     configuration->lambda.clear();
     configuration->lambda.resize(configuration->estimatePositions.size(), 0.0f);
 
+    float dampfactor = dampFactor;
+    int damptype = dampType;
+
     // Apply external forces
     for (Mesh* mesh : configuration->simulatedObjects) {
         if (mesh->gravityAffected) mesh->applyImpulse(2.0f * timeStep * Vector3f(0, -gravity, 0));
         if (mesh->windAffected) mesh->applyImpulse(2.0f * timeStep * Vector3f(0, 0, -windSpeed + (sinf(windOscillation) * windSpeed / 2.0f)));
     }
 
-    // Dampen velocities TODO better velocity damping
-    /*
+    // Dampen velocities
     for (Mesh* mesh : configuration->simulatedObjects) {
-        #pragma omp parallel for
-        for (int i = 0; i < mesh->numVertices; i++) {
-            mesh->velocities[i] *= velocityDamping;
-        }
+        mesh->dampVelocity(dampfactor, damptype);
     }
-    */
 
     // Initialise estimate positions
     for (Mesh* mesh : configuration->simulatedObjects) {
         #pragma omp parallel for
         for (int i = 0; i < mesh->numVertices; i++) {
             configuration->estimatePositions[i + mesh->estimatePositionsOffset] = mesh->vertices[i] + timeStep * mesh->velocities[i];
+            configuration->currentPositions[i + mesh->estimatePositionsOffset] = mesh->vertices[i];
         }
     }
 
@@ -84,6 +83,7 @@ void Simulation::simulate(Configuration *configuration) {
     params.solverIterations = solverIterations;
     params.stretchFactor = stretchFactor;
     params.bendFactor = bendFactor;
+    params.dampStiffness = (dampType == 3) ? dampfactor : 0.0f;
     switch (type)
     {
     case 0:
@@ -197,7 +197,7 @@ bool Simulation::planeIntersection(Vector3f rayOrigin, Vector3f rayDirection, fl
     float denom = normal.dot(rayDirection);
 
     // Ray is parallel with plane
-    if (fabs(denom) < EPSILON) return false;
+    if (fabs(denom) < EPSILONTHRESHOLD) return false;
 
     t = num / denom;
 
@@ -253,8 +253,14 @@ void Simulation::renderGUI() {
     ImGui::Text("Wireframe");
     ImGui::Checkbox("##wireframe", &wireframe);
 
-    ImGui::Text("Type");
-    ImGui::Combo("", &type, "Normal\0XPBD\0\0");
+    ImGui::Text("PBDType");
+    ImGui::Combo("##PBDType", &type, "Normal\0XPBD\0\0");
+
+    ImGui::Text("Damp Factor");
+    ImGui::SliderFloat("##dampFactor", &dampFactor, 0.0f, 0.2f, "%.3f");
+
+    ImGui::Text("\nDampType");
+    ImGui::Combo("##dampType", &dampType, "None\0Simple\0Rotate\0Extended(in XPBD only)\0\0");
 
     ImGui::End();
 }

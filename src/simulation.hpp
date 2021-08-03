@@ -32,8 +32,25 @@ public:
     float velocityDamping = 0.999f;
     float stretchFactor = 0.999f;
     float bendFactor = 0.3f;
+    float dampFactor = 0.01f;
+
     bool wireframe = true;
+    
+    /// <summary>
+    /// type: PBD type
+    /// 0: Normal PBD
+    /// 1: XPBD
+    /// </summary>
     int type = 1;
+
+    /// <summary>
+    /// dampType
+    /// 0: No damp
+    /// 1: Simple mutiplier
+    /// 2: Combine with rotating velocity
+    /// 3: In XPBD
+    /// </summary>
+    int dampType = 0;
 
     // Scene
     Scene* scene;
