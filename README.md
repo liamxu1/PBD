@@ -10,5 +10,5 @@ This repository is built based on GLFW and imGui. I especially refer to the repo
 - [ ] Continuous Material
 - [ ] SPH (MLS-PBD)
 - [ ] Projective Dynamics (Common & Chebyshev & Quasi Newton)
-- [ ] Improve velocity damping method
+- [x] Improve velocity damping method
 
