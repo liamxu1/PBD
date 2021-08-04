@@ -12,7 +12,7 @@ void Constraint::preCompute(Configuration* configuration) {
         inverseMasses[i] = configuration->inverseMasses[indices[i]];
 }
 
-void buildEdgeConstraints(Configuration* configuration, Mesh* mesh) {
+void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
 
     // Build a distance constraint along each edge
     for (Edge edge : mesh->edges) {
@@ -33,7 +33,7 @@ void buildRigidBodyConstraints(Configuration* configuration, Mesh* mesh) {
     }
 }
 
-void buildBendConstraints(Configuration* configuration, Mesh* mesh) {
+void buildBendConstraints(Configuration* configuration, TriangularMesh* mesh) {
 
     // Build a bend constraint between each pair of triangles that share an edge
     for (Edge edge : mesh->edges) {

@@ -43,11 +43,16 @@ struct Triangle {
     Vertex v[3];
 };
 
+struct Tetrahedron
+{
+    Vertex v[4];
+};
+
 class Mesh {
 
 public:
-    Mesh(string filename, Vector3f colour, float inverseMass = 1.0f);
-    ~Mesh();
+    Mesh(){}
+    virtual ~Mesh() = 0;
     void reset();
     void applyImpulse(Vector3f force);
     void translate(Vector3f translate);
@@ -64,11 +69,7 @@ public:
     // Mesh fields
     vector<Vector3f> initialVertices;
     vector<Vector3f> vertices;
-    vector<Vector2f> uvs;
-    vector<Vector3f> normals;
-    set<Edge, EdgeCompare> edges;
     vector<Triangle> triangles;
-    map<Edge, vector<Triangle>, EdgeCompare> adjacentTriangles;
     std::vector<Vector3f> surfaceNormals;
 
     // Simulation fields
@@ -79,9 +80,8 @@ public:
     bool gravityAffected = false;
     bool windAffected = false;
 
-private:
+protected:
     bool rayTriangleIntersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, int triangleIndex, int vertexIndex);
-    void parseObjFile(string filename);
     void generateSurfaceNormals();
 
     // VBOs
@@ -92,6 +92,21 @@ private:
     GLuint shader;
     Vector3f colour;
 
+};
+
+class TriangularMesh : public Mesh
+{
+public:
+    TriangularMesh(string filename, Vector3f colour, float inverseMass = 1.0f);
+    ~TriangularMesh(){}
+
+    vector<Vector2f> uvs;
+    vector<Vector3f> normals;
+    set<Edge, EdgeCompare> edges;
+    map<Edge, vector<Triangle>, EdgeCompare> adjacentTriangles;
+
+private:
+    void parseObjFile(string filename);
 };
 
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP

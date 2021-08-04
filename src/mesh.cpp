@@ -24,7 +24,9 @@ Matrix3f CrossMat(Vector3f vec)
     return mat;
 }
 
-Mesh::Mesh(string filename, Vector3f colour, float inverseMass) : colour(colour){
+TriangularMesh::TriangularMesh(string filename, Vector3f colour, float inverseMass){
+
+    this->colour = colour;
     parseObjFile(filename);
 
     initialVertices = vertices;
@@ -280,7 +282,7 @@ void Mesh::dampVelocity(float kDamp, int type)
     }
 }
 
-void Mesh::parseObjFile(string filename) {
+void TriangularMesh::parseObjFile(string filename) {
 
     // Attempt to open an input stream to the file
     ifstream objFile(filename);
