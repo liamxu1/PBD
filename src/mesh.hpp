@@ -16,6 +16,10 @@
 using namespace std;
 using namespace Eigen;
 
+struct SimpleVertex {
+    int p;
+};
+
 struct Vertex {
     int p;
     int t;
@@ -43,15 +47,33 @@ struct Triangle {
     Vertex v[3];
 };
 
-struct Tetrahedron
-{
-    Vertex v[4];
+struct SimpleTriangle {
+    SimpleTriangle(){}
+    SimpleTriangle(int p1, int p2, int p3)
+    {
+        v[0].p = p1;
+        v[1].p = p2;
+        v[2].p = p3;
+    }
+    SimpleVertex v[3];
+};
+
+struct SimpleTetrahedron{
+    SimpleTetrahedron(){}
+    SimpleTetrahedron(vector<int> p)
+    {
+        if (p.size() == 4)
+        {
+            for (int i = 0; i < 4; i++)
+                v[i].p = p[i];
+        }
+    }
+    SimpleVertex v[4];
 };
 
 class Mesh {
 
 public:
-    Mesh(){}
     virtual ~Mesh() = 0;
     void reset();
     void applyImpulse(Vector3f force);
@@ -69,7 +91,7 @@ public:
     // Mesh fields
     vector<Vector3f> initialVertices;
     vector<Vector3f> vertices;
-    vector<Triangle> triangles;
+    vector<SimpleTriangle> triangles;
     std::vector<Vector3f> surfaceNormals;
 
     // Simulation fields
@@ -103,10 +125,32 @@ public:
     vector<Vector2f> uvs;
     vector<Vector3f> normals;
     set<Edge, EdgeCompare> edges;
-    map<Edge, vector<Triangle>, EdgeCompare> adjacentTriangles;
+    map<Edge, vector<SimpleTriangle>, EdgeCompare> adjacentTriangles;
 
 private:
     void parseObjFile(string filename);
+};
+
+class TetrahedralMesh : public Mesh
+{
+public:
+    TetrahedralMesh(string filename, Vector3f colour, float inverseMass = 1.0f);
+    ~TetrahedralMesh(){}
+
+    vector<SimpleTetrahedron> tetrahedrons;
+    int numBodies;
+
+private:
+
+    // my .tet file format:
+    // First line: (total vertices number) (total tetrahedrons number)
+    // Next part: (vertices' positions)
+    // ----each line with 3 floats representing the position of one vertex
+    // Final part: (tetrahedrons)
+    // ----each line with 4 ints representing the vertex indices (start with 0) in a tetrahedron
+    void parseTetFile(string filename);
+
+    bool existTriangle(SimpleTriangle& triangle) const;
 };
 
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP

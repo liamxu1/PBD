@@ -36,27 +36,27 @@ void buildRigidBodyConstraints(Configuration* configuration, Mesh* mesh) {
 void buildBendConstraints(Configuration* configuration, TriangularMesh* mesh) {
 
     // Build a bend constraint between each pair of triangles that share an edge
-    for (Edge edge : mesh->edges) {
+    for (auto edge : mesh->edges) {
 
         // Skip edges with only one adjacent triangle
         if (mesh->adjacentTriangles[edge].size() != 2) continue;
 
-        Triangle t1 = mesh->adjacentTriangles[edge][0];
-        Triangle t2 = mesh->adjacentTriangles[edge][1];
+        auto t1 = mesh->adjacentTriangles[edge][0];
+        auto t2 = mesh->adjacentTriangles[edge][1];
 
         int p1 = edge.v[0].p; // Shared vertex 1
         int p2 = edge.v[1].p; // Shared vertex 2
 
         // Determine vertex 3
         int p3;
-        for (Vertex v : t1.v) {
+        for (auto v : t1.v) {
             int p = v.p;
             if (p1 != p && p2 != p) p3 = p;
         }
 
         // Determine vertex 4
         int p4;
-        for (Vertex v : t2.v) {
+        for (auto v : t2.v) {
             int p = v.p;
             if (p1 != p && p2 != p) p4 = p;
         }

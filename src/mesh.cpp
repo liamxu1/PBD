@@ -154,7 +154,7 @@ void Mesh::render(Camera* camera, Matrix4f transform) {
     tempNormals.resize((size_t) numVertices, Vector3f::Zero());
     generateSurfaceNormals();
     for (unsigned int i = 0; i < numFaces; i++) {
-        Triangle tri = triangles[i];
+        SimpleTriangle tri = triangles[i];
 
         for (int j = 0; j < 3; j++) {
             tempNormals[tri.v[j].p] += surfaceNormals[i];
@@ -165,7 +165,7 @@ void Mesh::render(Camera* camera, Matrix4f transform) {
     vector<Vector3f> outVertices;
     vector<Vector3f> outNormals;
     for (unsigned int i = 0; i < numFaces; i++) {
-        Triangle tri = triangles[i];
+        SimpleTriangle tri = triangles[i];
 
         for (int j = 0; j < 3; j++) {
             Vector3f position = vertices[tri.v[j].p];
@@ -341,10 +341,7 @@ void TriangularMesh::parseObjFile(string filename) {
 
                 // If we have 3 vertices, construct a triangle
                 if (verts.size() >= 3) {
-                    Triangle triangle;
-                    triangle.v[0] = verts[0];
-                    triangle.v[1] = verts[1];
-                    triangle.v[2] = verts[2];
+                    SimpleTriangle triangle(verts[0].p, verts[1].p, verts[2].p);
                     triangles.push_back(triangle);
 
                     // Construct edges
@@ -368,4 +365,84 @@ void TriangularMesh::parseObjFile(string filename) {
     this->numFaces = (int) triangles.size();
 
     generateSurfaceNormals();
+}
+
+TetrahedralMesh::TetrahedralMesh(string filename, Vector3f colour, float inverseMass)
+{
+    this->colour = colour;
+    parseTetFile(filename);
+
+    initialVertices = vertices;
+
+    // Setup VBO
+    glGenBuffers(1, &positionVBO);
+    glGenBuffers(1, &normalVBO);
+
+    // Setup shader
+    shader = loadShaders("SimpleVertexShader", "SimpleFragmentShader");
+
+    // Setup simulation
+    reset();
+    this->inverseMass.resize((size_t)numVertices, inverseMass);
+}
+
+void TetrahedralMesh::parseTetFile(string filename)
+{
+    // Attempt to open an input stream to the file
+    ifstream tetFile(filename);
+    if (!tetFile.is_open()) {
+        cout << "Error reading " << filename << endl;
+        return;
+    }
+
+    string line;
+    getline(tetFile, line);
+    istringstream tetline(line);
+    tetline >> numVertices >> numBodies;
+
+    for (int i = 0; i < numVertices; i++)
+    {
+        Vector3f v;
+        getline(tetFile, line);
+        istringstream tetline(line);
+        tetline >> v[0] >> v[1] >> v[2];
+        vertices.push_back(v);
+    }
+    for (int i = 0; i < numBodies; i++)
+    {
+        getline(tetFile, line);
+        istringstream tetline(line);
+        
+        vector<int> p(4);
+        tetline >> p[0] >> p[1] >> p[2] >> p[3];
+        std::sort(p.begin(), p.end());
+
+        tetrahedrons.push_back(SimpleTetrahedron(p));
+
+        SimpleTriangle triangle(p[0], p[1], p[2]);
+        if (!existTriangle(triangle)) triangles.push_back(triangle);
+        
+        SimpleTriangle triangle(p[0], p[1], p[3]);
+        if (!existTriangle(triangle)) triangles.push_back(triangle);
+
+        SimpleTriangle triangle(p[0], p[2], p[3]);
+        if (!existTriangle(triangle)) triangles.push_back(triangle);
+
+        SimpleTriangle triangle(p[1], p[2], p[3]);
+        if (!existTriangle(triangle)) triangles.push_back(triangle);
+    }
+
+    this->numFaces = (int)triangles.size();
+
+    generateSurfaceNormals();
+}
+
+bool TetrahedralMesh::existTriangle(SimpleTriangle& triangle) const
+{
+    for (auto t : triangles)
+    {
+        if (t.v[0].p == triangle.v[0].p && t.v[1].p == triangle.v[1].p && t.v[2].p == triangle.v[2].p)
+            return true;
+    }
+    return false;
 }
