@@ -43,6 +43,8 @@ public:
     void translateInteraction(Vector3f translate);
     void render(bool wireframe);
 
+    int sceneNum();
+
     // Camera
     Camera* camera;
     float pitch = 0.0f;
@@ -56,18 +58,14 @@ public:
 private:
 
     // Scene configuration setup
-    void setupConfigurationA();
-    void setupConfigurationB();
-    void setupConfigurationC();
-    void setupConfigurationD();
+    Configuration* setupConfigurationA();
+    Configuration* setupConfigurationB();
+    Configuration* setupConfigurationC();
+    Configuration* setupConfigurationD();
     void addPlaneToConfiguration(Configuration* configuration);
     void setupEstimatePositionOffsets(Configuration* configuration);
 
-    Configuration* configurationA;
-    Configuration* configurationB;
-    Configuration* configurationC;
-    Configuration* configurationD;
-
+    vector<Configuration*> configurations;
 };
 
 #endif //POSITIONBASEDDYNAMICS_SCENE_HPP

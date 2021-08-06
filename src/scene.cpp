@@ -13,19 +13,17 @@ Scene::Scene() {
     camera = new Camera();
 
     // Setup scene configurations
-    setupConfigurationA();
-    setupConfigurationB();
-    setupConfigurationC();
-    setupConfigurationD();
-    currentConfiguration = configurationC;
+    configurations.push_back(setupConfigurationA());
+    configurations.push_back(setupConfigurationB());
+    configurations.push_back(setupConfigurationC());
+    configurations.push_back(setupConfigurationD());
+    currentConfiguration = configurations[2];
 }
 
 Scene::~Scene() {
     delete camera;
-    delete configurationA;
-    delete configurationB;
-    delete configurationC;
-    delete configurationD;
+    for (auto configuation : configurations)
+        delete configuation;
 }
 
 void Scene::reset() {
@@ -41,30 +39,15 @@ void Scene::reset() {
 }
 
 void Scene::setConfiguration(int index) {
-    switch (index) {
-        case 0:
-            currentConfiguration = configurationA;
-            break;
-        case 1:
-            currentConfiguration = configurationB;
-            break;
-        case 2:
-            currentConfiguration = configurationC;
-            break;
-        case 3:
-            currentConfiguration = configurationD;
-            break;
-        default:
-            currentConfiguration = configurationA;
-            break;
-    }
+    assert(index >= 0 && index < configurations.size());
+    currentConfiguration = configurations[index];
 }
 
 void Scene::translateInteraction(Vector3f translate) {
 
     // Translate the attachment points in scene 3
-    if (currentConfiguration == configurationC) {
-        configurationC->simulatedObjects[0]->translate(translate);
+    if (currentConfiguration == configurations[2]) {
+        currentConfiguration->simulatedObjects[0]->translate(translate);
     }
 }
 
@@ -97,8 +80,13 @@ void Scene::render(bool wireframe) {
     }
 }
 
-void Scene::setupConfigurationA() {
-    configurationA = new Configuration();
+int Scene::sceneNum()
+{
+    return configurations.size();
+}
+
+Configuration* Scene::setupConfigurationA() {
+    Configuration* configurationA = new Configuration();
 
     addPlaneToConfiguration(configurationA);
 
@@ -128,10 +116,12 @@ void Scene::setupConfigurationA() {
     for (int i = 0; i < 14; i++) buildFixedConstraint(configurationA, flagHigh, i, flagHigh->initialVertices[i]);
     buildEdgeConstraints(configurationA, flagHigh);
     buildBendConstraints(configurationA, flagHigh);
+
+    return configurationA;
 }
 
-void Scene::setupConfigurationB() {
-    configurationB = new Configuration();
+Configuration* Scene::setupConfigurationB() {
+    Configuration* configurationB = new Configuration();
 
     addPlaneToConfiguration(configurationB);
 
@@ -150,10 +140,12 @@ void Scene::setupConfigurationB() {
 
     buildEdgeConstraints(configurationB, cloth);
     buildBendConstraints(configurationB, cloth);
+
+    return configurationB;
 }
 
-void Scene::setupConfigurationC() {
-    configurationC = new Configuration();
+Configuration* Scene::setupConfigurationC() {
+    Configuration* configurationC = new Configuration();
 
     addPlaneToConfiguration(configurationC);
 
@@ -183,10 +175,12 @@ void Scene::setupConfigurationC() {
     buildRigidBodyConstraints(configurationC, bar);
 
     buildTwoWayCouplingConstraints(configurationC, cloth);
+
+    return configurationC;
 }
 
-void Scene::setupConfigurationD() {
-    configurationD = new Configuration();
+Configuration* Scene::setupConfigurationD() {
+    Configuration* configurationD = new Configuration();
 
     addPlaneToConfiguration(configurationD);
 
@@ -226,6 +220,8 @@ void Scene::setupConfigurationD() {
     buildRigidBodyConstraints(configurationD, pyramid);
     buildRigidBodyConstraints(configurationD, cylinder);
     buildRigidBodyConstraints(configurationD, sphere);
+
+    return configurationD;
 }
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {

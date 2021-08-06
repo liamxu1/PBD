@@ -224,10 +224,14 @@ void Simulation::renderGUI() {
     ImGui::Begin("Simulator");
 
     ImGui::Text("Scene Selection");
-    if (ImGui::Button("Show Scene A")) scene->setConfiguration(0);
-    if (ImGui::Button("Show Scene B")) scene->setConfiguration(1);
-    if (ImGui::Button("Show Scene C")) scene->setConfiguration(2);
-    if (ImGui::Button("Show Scene D")) scene->setConfiguration(3);
+
+    int sceneNum = scene->sceneNum();
+    char info[] = "Show Scene A";
+    for (int i = 0; i < sceneNum; i++)
+    {
+        info[11] = 'A' + i;
+        if (ImGui::Button(info)) scene->setConfiguration(i);
+    }
 
     ImGui::Text("Solver Iterations");
     ImGui::SliderInt("##solverIterations", &solverIterations, 1, 50, "%.0f");

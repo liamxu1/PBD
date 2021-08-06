@@ -419,17 +419,17 @@ void TetrahedralMesh::parseTetFile(string filename)
 
         tetrahedrons.push_back(SimpleTetrahedron(p));
 
-        SimpleTriangle triangle(p[0], p[1], p[2]);
-        if (!existTriangle(triangle)) triangles.push_back(triangle);
+        SimpleTriangle triangle1(p[0], p[1], p[2]);
+        if (!existTriangle(triangle1)) triangles.push_back(triangle1);
         
-        SimpleTriangle triangle(p[0], p[1], p[3]);
-        if (!existTriangle(triangle)) triangles.push_back(triangle);
+        SimpleTriangle triangle2(p[0], p[1], p[3]);
+        if (!existTriangle(triangle2)) triangles.push_back(triangle2);
 
-        SimpleTriangle triangle(p[0], p[2], p[3]);
-        if (!existTriangle(triangle)) triangles.push_back(triangle);
+        SimpleTriangle triangle3(p[0], p[2], p[3]);
+        if (!existTriangle(triangle3)) triangles.push_back(triangle3);
 
-        SimpleTriangle triangle(p[1], p[2], p[3]);
-        if (!existTriangle(triangle)) triangles.push_back(triangle);
+        SimpleTriangle triangle4(p[1], p[2], p[3]);
+        if (!existTriangle(triangle4)) triangles.push_back(triangle4);
     }
 
     this->numFaces = (int)triangles.size();
