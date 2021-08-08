@@ -415,21 +415,13 @@ void TetrahedralMesh::parseTetFile(string filename)
         
         vector<int> p(4);
         tetline >> p[0] >> p[1] >> p[2] >> p[3];
-        std::sort(p.begin(), p.end());
 
         tetrahedrons.push_back(SimpleTetrahedron(p));
 
-        SimpleTriangle triangle1(p[0], p[1], p[2]);
-        if (!existTriangle(triangle1)) triangles.push_back(triangle1);
-        
-        SimpleTriangle triangle2(p[0], p[1], p[3]);
-        if (!existTriangle(triangle2)) triangles.push_back(triangle2);
-
-        SimpleTriangle triangle3(p[0], p[2], p[3]);
-        if (!existTriangle(triangle3)) triangles.push_back(triangle3);
-
-        SimpleTriangle triangle4(p[1], p[2], p[3]);
-        if (!existTriangle(triangle4)) triangles.push_back(triangle4);
+        insertTriangle(SimpleTriangle(p[0], p[1], p[2]));
+        insertTriangle(SimpleTriangle(p[1], p[0], p[3]));
+        insertTriangle(SimpleTriangle(p[0], p[2], p[3]));
+        insertTriangle(SimpleTriangle(p[2], p[1], p[3]));
     }
 
     this->numFaces = (int)triangles.size();
@@ -437,12 +429,35 @@ void TetrahedralMesh::parseTetFile(string filename)
     generateSurfaceNormals();
 }
 
-bool TetrahedralMesh::existTriangle(SimpleTriangle& triangle) const
+void TetrahedralMesh::insertTriangle(SimpleTriangle& triangle)
 {
-    for (auto t : triangles)
+    for (auto iter = triangles.begin(); iter != triangles.end(); iter++)
     {
-        if (t.v[0].p == triangle.v[0].p && t.v[1].p == triangle.v[1].p && t.v[2].p == triangle.v[2].p)
-            return true;
+        if (iter->v[0].p == triangle.v[0].p)
+        {
+            if ((iter->v[1].p == triangle.v[1].p && iter->v[2].p == triangle.v[2].p) || (iter->v[1].p == triangle.v[2].p && iter->v[2].p == triangle.v[1].p))
+            {
+                triangles.erase(iter);
+                return;
+            }
+        }
+        else if (iter->v[0].p == triangle.v[1].p)
+        {
+            if ((iter->v[1].p == triangle.v[0].p && iter->v[2].p == triangle.v[2].p) || (iter->v[1].p == triangle.v[2].p && iter->v[2].p == triangle.v[0].p))
+            {
+                triangles.erase(iter);
+                return;
+            }
+        }
+        else if (iter->v[0].p == triangle.v[2].p)
+        {
+            if ((iter->v[1].p == triangle.v[0].p && iter->v[2].p == triangle.v[1].p) || (iter->v[1].p == triangle.v[1].p && iter->v[2].p == triangle.v[0].p))
+            {
+                triangles.erase(iter);
+                return;
+            }
+        }
     }
-    return false;
+
+    triangles.push_back(triangle);
 }

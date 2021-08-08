@@ -17,6 +17,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationB());
     configurations.push_back(setupConfigurationC());
     configurations.push_back(setupConfigurationD());
+    configurations.push_back(setupConfigurationE());
     currentConfiguration = configurations[2];
 }
 
@@ -222,6 +223,27 @@ Configuration* Scene::setupConfigurationD() {
     buildRigidBodyConstraints(configurationD, sphere);
 
     return configurationD;
+}
+
+Configuration* Scene::setupConfigurationE()
+{
+    Configuration* configurationE = new Configuration();
+    
+    addPlaneToConfiguration(configurationE);
+
+    Vector3f colourA = { 0.0f,1.0f,0.0f };
+    TetrahedralMesh* cube = new TetrahedralMesh("../resources/models/sceneE/cube.tet", colourA);
+
+    cube->isRigidBody = true;
+    cube->gravityAffected = true;
+
+    configurationE->simulatedObjects.push_back(cube);
+
+    setupEstimatePositionOffsets(configurationE);
+
+    buildRigidBodyConstraints(configurationE, cube);
+
+    return configurationE;
 }
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {

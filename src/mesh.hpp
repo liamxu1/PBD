@@ -150,7 +150,7 @@ private:
     // ----each line with 4 ints representing the vertex indices (start with 0) in a tetrahedron
     void parseTetFile(string filename);
 
-    bool existTriangle(SimpleTriangle& triangle) const;
+    void insertTriangle(SimpleTriangle& triangle);
 };
 
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP
