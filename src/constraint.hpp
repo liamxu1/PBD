@@ -48,7 +48,6 @@ public:
     int cardinality;
     vector<int> indices;
     Mesh* mesh;
-    MatrixXf coefficients;
     vector<float> inverseMasses;
 
 };
