@@ -24,6 +24,12 @@ enum class PBDType
     none
 };
 
+enum class ConstitutiveMaterialModel
+{
+    StVKModel,
+    NeoHookeanModel
+};
+
 struct Params {
     int solverIterations;
     float stretchFactor;
@@ -31,10 +37,18 @@ struct Params {
     float timeStep;
     
     // for xpbd
+
     float compliance;
     float dampStiffness;
+
+    // for continuous material
+
+    float poisonRatio;
+    float YoungModulus;
     
     PBDType type = PBDType::none;
+    ConstitutiveMaterialModel modelType = ConstitutiveMaterialModel::NeoHookeanModel;
+
 };
 
 class Constraint {
@@ -95,6 +109,17 @@ public:
 
 };
 
+class TetrahedralConstraint : public Constraint {
+
+public:
+    TetrahedralConstraint(Mesh* mesh, int cardinality, Matrix3f originalShape) :
+        Constraint(mesh, cardinality), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant())) {}
+    void project(Configuration* configuration, Params params);
+
+    Matrix3f inversedOriginalShape;
+    float initialVolume;
+};
+
 class StaticCollisionConstraint : public CollisionConstraint {
 
 public:
@@ -116,6 +141,9 @@ public:
 
 };
 
+// calculate stress tensor and stress energy density according to deformation gradient F
+pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params);
+
 // Constraint building
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh);
 void buildRigidBodyConstraints(Configuration* configuration, Mesh* mesh);
@@ -124,6 +152,8 @@ void buildTwoWayCouplingConstraints(Configuration* configuration, Mesh* meshA);
 void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, Vector3f target);
 void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, Mesh* secondMesh = nullptr);
 void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, int indexC, int indexD, float angle);
+void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh);
+TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape);
 CollisionConstraint* buildStaticCollisionConstraint(Mesh* mesh, int index, Vector3f normal, Vector3f position);
 CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC);
 

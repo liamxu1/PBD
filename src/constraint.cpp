@@ -144,6 +144,36 @@ CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexInde
     return constraint;
 }
 
+void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh)
+{
+    for (auto &tetra : mesh->tetrahedrons)
+    {
+        int indexA = tetra.v[0].p;
+        int indexB = tetra.v[1].p;
+        int indexC = tetra.v[2].p;
+        int indexD = tetra.v[3].p;
+
+        Matrix3f originalShape = Matrix3f::Zero();
+        originalShape << mesh->vertices[indexA] - mesh->vertices[indexD], mesh->vertices[indexB] - mesh->vertices[indexD], mesh->vertices[indexC] - mesh->vertices[indexD];
+
+        auto constraint = buildTetrahedralConstraint(mesh, indexA, indexB, indexC, indexD, originalShape);
+        constraint->preCompute(configuration);
+
+        configuration->constraints.push_back(constraint);
+    }
+}
+
+TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape)
+{
+    TetrahedralConstraint* constraint = new TetrahedralConstraint(mesh, 4, originalShape);
+    constraint->indices.push_back(indexA + mesh->estimatePositionsOffset);
+    constraint->indices.push_back(indexB + mesh->estimatePositionsOffset);
+    constraint->indices.push_back(indexC + mesh->estimatePositionsOffset);
+    constraint->indices.push_back(indexD + mesh->estimatePositionsOffset);
+
+    return constraint;
+}
+
 void FixedConstraint::project(Configuration* configuration, Params params) {
     if (params.type == PBDType::none)
     {
@@ -343,4 +373,127 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     Vector3f displacement = a * b;
 
     configuration->estimatePositions[indices[0]] -= displacement;
+}
+
+pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params)
+{
+    float nu = params.poisonRatio, k = params.YoungModulus;
+    // lame coefficients
+    float mu = k / (2.f * (1.f + nu)), lambda = k * nu / ((1.f + nu) * (1.f - 2.f * nu));
+
+    Matrix3f P = Matrix3f::Zero();
+    float phi = 0.f;
+
+    switch (params.modelType)
+    {
+    case ConstitutiveMaterialModel::StVKModel:
+    {
+        float e = F.trace();
+        Matrix3f epsilon = (F.transpose() * F - Matrix3f::Identity()) / 2;
+        Matrix3f S = 2 * mu * epsilon + lambda * e * Matrix3f::Identity();
+        P = F * S;
+        phi = 0.5 * (epsilon.transpose() * S).trace();
+        break;
+    }
+
+    case ConstitutiveMaterialModel::NeoHookeanModel:
+    {
+        Matrix3f FT = F.transpose();
+        Matrix3f FTF = FT * F;
+        float I1 = FTF.trace(), I3 = FTF.determinant();
+        assert(I3 > EPSILONTHRESHOLD);
+        Matrix3f FT_ = FT.inverse();
+
+        P = mu * F - mu * FT_ + lambda * logf(I3) * 0.5f * FT_;
+        phi = mu / 2 * (I1 - logf(I3) - 3) + lambda / 8 * powf(logf(I3), 2);
+        break;
+    }
+
+    default:
+    {
+        cout << "Wrong model type faced when calculating stress tensor!\n";
+        break;
+    }
+
+    }
+
+    return pair<Matrix3f, float>(P, phi);
+}
+
+void TetrahedralConstraint::project(Configuration* configuration, Params params)
+{
+    // calculate new shape
+    Matrix3f newShape = Matrix3f::Zero();
+    vector<Vector3f> currentPositions(4);
+    for (int i = 0; i < 4; i++)
+    {
+        currentPositions[i] = configuration->estimatePositions[indices[i]];
+    }
+    newShape << currentPositions[0] - currentPositions[3], currentPositions[1] - currentPositions[3], currentPositions[2] - currentPositions[3];
+
+    // deformation gradient
+    Matrix3f F = newShape * inversedOriginalShape;
+
+    auto temp = calculateStressTensorAndStressEnergyDensity(F, params);
+
+    // stress tensor
+    Matrix3f P = temp.first;
+
+    // energy density
+    float phi = temp.second;
+
+    float energy = phi * initialVolume;
+    Matrix3f partialDerivativesInMatrix = initialVolume * P * inversedOriginalShape;
+
+    vector<Vector3f> partialDerivatives(4, Vector3f::Zero());
+    for (int i = 0; i < 3; i++)
+    {
+        partialDerivatives[i] = partialDerivativesInMatrix.col(i);
+        partialDerivatives[3] -= partialDerivatives[i];
+    }
+
+    float wSum = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
+    }
+
+    switch (params.type)
+    {
+    case PBDType::normalPBD:
+    {
+        float s = energy / wSum;
+        for (int i = 0; i < 4; i++)
+        {
+            configuration->estimatePositions[indices[i]] -= s * inverseMasses[i] * partialDerivatives[i];
+        }
+        break;
+    }
+
+    case PBDType::XPBD:
+    {
+        vector<float> dlambda(4, 0.f);
+        float alpha = params.compliance / powf(params.timeStep, 2);
+        float gamma = alpha * params.dampStiffness * params.timeStep;
+        for (int i = 0; i < 4; i++)
+        {
+            dlambda[i] = (-energy - alpha * configuration->lambda[indices[i]]
+                - gamma * partialDerivatives[i].dot(configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]]))
+                / ((1 + gamma) * wSum + alpha);
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            configuration->lambda[indices[i]] += dlambda[i];
+            configuration->estimatePositions[indices[i]] += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
+        }
+        break;
+    }
+
+    default:
+    {
+        cout << "Tetrahedral constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
+        break;
+    }
+
+    }
 }
