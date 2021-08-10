@@ -12,6 +12,58 @@ void Constraint::preCompute(Configuration* configuration) {
         inverseMasses[i] = configuration->inverseMasses[indices[i]];
 }
 
+void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k)
+{
+    float wSum = 0;
+    for (int i = 0; i < cardinality; i++)
+    {
+        wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
+    }
+    
+    if (wSum < EPSILONTHRESHOLD) return;
+
+    switch (params.type)
+    {
+    case PBDType::normalPBD:
+    {
+        float s = C / wSum;
+        float kNew = 1.0f - pow(1.0f - k, 1.0f / params.solverIterations);
+        for (int i = 0; i < cardinality; i++)
+        {
+            configuration->estimatePositions[indices[i]] -= kNew * s * inverseMasses[i] * partialDerivatives[i];
+        }
+        break;
+    }
+
+    case PBDType::XPBD:
+    {
+        vector<float> dlambda(cardinality, 0.f);
+        float alpha = params.compliance / powf(params.timeStep, 2);
+        float gamma = alpha * params.dampStiffness * params.timeStep;
+        for (int i = 0; i < cardinality; i++)
+        {
+            dlambda[i] = (-C - alpha * configuration->lambda[indices[i]]
+                - gamma * partialDerivatives[i].dot(configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]]))
+                / ((1 + gamma) * wSum + alpha);
+        }
+        for (int i = 0; i < cardinality; i++)
+        {
+            configuration->lambda[indices[i]] += dlambda[i];
+            configuration->estimatePositions[indices[i]] += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
+        }
+        break;
+    }
+
+    default:
+    {
+        string currentConstraintType = typeNameString.at(type);
+        cout << currentConstraintType + static_cast<string>(" projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n");
+        break;
+    }
+
+    }
+}
+
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
 
     // Build a distance constraint along each edge
@@ -197,47 +249,9 @@ void DistanceConstraint::project(Configuration* configuration, Params params) {
     Vector3f n = (p1 - p2) / ((p1 - p2).norm() + EPSILON);
     Vector3f b = n * a;
 
-    switch (params.type)
-    {
-    case PBDType::normalPBD:
-    {
-        vector<float> coef = { -w1 / (w1 + w2),w2 / (w1 + w2) };
-        for (int i = 0; i < cardinality; i++) {
-            Vector3f displacement = coef[i] * b;
-            float k = 1.0f - pow(1.0f - params.stretchFactor, 1.0f / params.solverIterations);
-            configuration->estimatePositions[indices[i]] += k * displacement;
-        }
-        break;
-    }
+    vector<Vector3f> partialDerivatives = { n, -n };
 
-    case PBDType::XPBD:
-    {
-        float alpha = params.compliance / powf(params.timeStep, 2);
-        float gamma = alpha * params.dampStiffness * params.timeStep;
-        float lambda1 = configuration->lambda[indices[0]], lambda2 = configuration->lambda[indices[1]];
-        Vector3f pOrigin1 = configuration->currentPositions[indices[0]], pOrigin2 = configuration->currentPositions[indices[1]];
-        float d1 = n.dot(p1 - pOrigin1), d2 = -n.dot(p2 - pOrigin2);
-        float dlambda1 = (-a - alpha * lambda1 - gamma * d1) / ((w1 + w2) * (1 + gamma) + alpha), dlambda2 = (-a - alpha * lambda2 - gamma * d2) / ((w1 + w2) * (1 + gamma) + alpha);
-
-        configuration->lambda[indices[0]] += dlambda1;
-        configuration->lambda[indices[1]] += dlambda2;
-
-        vector<float> coef = { w1 * dlambda1,-w2 * dlambda2 };
-
-        for (int i = 0; i < cardinality; i++) {
-            Vector3f displacement = coef[i] * n;
-            configuration->estimatePositions[indices[i]] += displacement;
-        }
-        break;
-
-    }
-
-    default:
-    {
-        cout << "Distance constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
-        break;
-    }
-    }
+    commonOnProject(configuration, params, a, partialDerivatives, params.stretchFactor);
 }
 
 void BendConstraint::project(Configuration* configuration, Params params) {
@@ -272,65 +286,11 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     Vector3f q2 = -(p3.cross(n2) + d * n1.cross(p3)) / p2Xp3Norm - (p4.cross(n1) + d * n2.cross(p4)) / p2Xp4Norm;
     Vector3f q1 = -q2 - q3 - q4;
 
-    float qSum = inverseMasses[0] * q1.squaredNorm() + inverseMasses[1] * q2.squaredNorm() + inverseMasses[2] * q3.squaredNorm() + inverseMasses[3] * q4.squaredNorm();
+    float coef = sqrtf(1.0f - d * d + EPSILON);
+    vector<Vector3f> partialDerivatives = { q1 / coef,q2 / coef,q3 / coef,q4 / coef };
 
-    if (qSum < EPSILONTHRESHOLD)
-    {
-        return;
-    }
+    commonOnProject(configuration, params, acosf(d) - angle, partialDerivatives, params.bendFactor);
 
-    float a = sqrtf(1.0f - d * d) * (acosf(d) - angle) / qSum;
-
-    switch (params.type)
-    {
-    case PBDType::normalPBD:
-    {
-        vector<Vector3f> displacements = { -a * q1,-a * q2,-a * q3,-a * q4 };
-
-        for (int i = 0; i < cardinality; i++) {
-            float k = 1.0f - pow(1.0f - params.bendFactor, 1.0f / params.solverIterations);
-            configuration->estimatePositions[indices[i]] += k * displacements[i] * inverseMasses[i];
-        }
-        break;
-    }
-
-    case PBDType::XPBD:
-    {
-        float alpha = params.compliance / powf(params.timeStep, 2);
-        float gamma = alpha * params.dampStiffness * params.timeStep;
-        float delta = qSum / (1 - powf(d, 2) + EPSILON);
-        float c = acosf(d) - angle;
-
-        vector<float> dlambda(4, 0.0f);
-
-        vector<Vector3f> displacements = { q1,q2,q3,q4 };
-
-        vector<Vector3f> move(cardinality);
-        for (int i = 0; i < cardinality; i++)
-        {
-            move[i] = configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]];
-        }
-
-        for (int i = 0; i < cardinality; i++)
-        {
-            float lambda = configuration->lambda[indices[i]];
-            dlambda[i] = (-c - alpha * lambda - gamma * displacements[i].dot(move[i])) / (delta * (1 + gamma) + alpha);
-            lambda = configuration->lambda[indices[i]] += dlambda[i];
-        }
-
-        for (int i = 0; i < cardinality; i++) {
-            Vector3f displacement = displacements[i] * inverseMasses[i] * dlambda[i] * (sqrtf(1 - powf(d, 2) + EPSILON));
-            configuration->estimatePositions[indices[i]] += displacement;
-        }
-        break;
-    }
-
-    default:
-    {
-        cout << "Bend constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
-        break;
-    }
-    }
 }
 
 void StaticCollisionConstraint::project(Configuration* configuration, Params params) {
@@ -458,42 +418,5 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
         wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
     }
 
-    switch (params.type)
-    {
-    case PBDType::normalPBD:
-    {
-        float s = energy / wSum;
-        for (int i = 0; i < 4; i++)
-        {
-            configuration->estimatePositions[indices[i]] -= s * inverseMasses[i] * partialDerivatives[i];
-        }
-        break;
-    }
-
-    case PBDType::XPBD:
-    {
-        vector<float> dlambda(4, 0.f);
-        float alpha = params.compliance / powf(params.timeStep, 2);
-        float gamma = alpha * params.dampStiffness * params.timeStep;
-        for (int i = 0; i < 4; i++)
-        {
-            dlambda[i] = (-energy - alpha * configuration->lambda[indices[i]]
-                - gamma * partialDerivatives[i].dot(configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]]))
-                / ((1 + gamma) * wSum + alpha);
-        }
-        for (int i = 0; i < 4; i++)
-        {
-            configuration->lambda[indices[i]] += dlambda[i];
-            configuration->estimatePositions[indices[i]] += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
-        }
-        break;
-    }
-
-    default:
-    {
-        cout << "Tetrahedral constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
-        break;
-    }
-
-    }
+    commonOnProject(configuration, params, energy, partialDerivatives);
 }
