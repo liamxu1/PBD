@@ -145,7 +145,7 @@ class TetrahedralConstraint : public Constraint {
 
 public:
     TetrahedralConstraint(Mesh* mesh, int cardinality, Matrix3f originalShape) :
-        Constraint(mesh, cardinality), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant())) {
+        Constraint(mesh, cardinality), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant()) / 6.f) {
         type = ConstraintType::TetrahedralConstraint;
     }
     void project(Configuration* configuration, Params params);

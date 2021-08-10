@@ -361,7 +361,7 @@ pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Pa
         Matrix3f FT = F.transpose();
         Matrix3f FTF = FT * F;
         float I1 = FTF.trace(), I3 = FTF.determinant();
-        assert(I3 > EPSILONTHRESHOLD);
+        assert(fabs(I3) > EPSILONTHRESHOLD);
         Matrix3f FT_ = FT.inverse();
 
         P = mu * F - mu * FT_ + lambda * logf(I3) * 0.5f * FT_;
@@ -410,12 +410,6 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
     {
         partialDerivatives[i] = partialDerivativesInMatrix.col(i);
         partialDerivatives[3] -= partialDerivatives[i];
-    }
-
-    float wSum = 0;
-    for (int i = 0; i < 4; i++)
-    {
-        wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
     }
 
     commonOnProject(configuration, params, energy, partialDerivatives);
