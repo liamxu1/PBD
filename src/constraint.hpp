@@ -30,6 +30,27 @@ enum class ConstitutiveMaterialModel
     NeoHookeanModel
 };
 
+enum class ConstraintType
+{
+    NoneType,
+    FixedConstraint,
+    DistanceConstraint,
+    BendConstraint,
+    TetrahedralConstraint,
+    StaticCollisionConstraint,
+    TriangleCollisionConstraint
+};
+
+const static map<ConstraintType, string> typeNameString = {
+    {ConstraintType::NoneType,"Undefined constraint"},
+    {ConstraintType::FixedConstraint,"Fixed constraint"},
+    {ConstraintType::DistanceConstraint,"Distance constraint"},
+    {ConstraintType::BendConstraint,"Bend constraint"},
+    {ConstraintType::TetrahedralConstraint,"Tetrahedral constraint"},
+    {ConstraintType::StaticCollisionConstraint,"Static collision constraint"},
+    {ConstraintType::TriangleCollisionConstraint,"Triangle collision constraint"}
+};
+
 struct Params {
     int solverIterations;
     float stretchFactor;
@@ -64,13 +85,20 @@ public:
     Mesh* mesh;
     vector<float> inverseMasses;
 
+    ConstraintType type = ConstraintType::NoneType;
+
+protected:
+    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k = 1.0f);
+
 };
 
 class FixedConstraint : public Constraint {
 
 public:
     FixedConstraint(Mesh* mesh, int cardinality, Vector3f target) :
-            Constraint(mesh, cardinality), target(target) {}
+        Constraint(mesh, cardinality), target(target) {
+        type = ConstraintType::FixedConstraint;
+    }
     void project(Configuration* configuration, Params params);
 
     Vector3f target;
@@ -81,7 +109,9 @@ class DistanceConstraint : public Constraint {
 
 public:
     DistanceConstraint(Mesh* mesh, int cardinality, float distance) :
-            Constraint(mesh, cardinality), distance(distance) {}
+        Constraint(mesh, cardinality), distance(distance) {
+        type = ConstraintType::DistanceConstraint;
+    }
     void project(Configuration* configuration, Params params);
 
     float distance;
@@ -91,7 +121,9 @@ class BendConstraint : public Constraint {
 
 public:
     BendConstraint(Mesh* mesh, int cardinality, float angle) :
-            Constraint(mesh, cardinality), angle(angle) {}
+        Constraint(mesh, cardinality), angle(angle) {
+        type = ConstraintType::BendConstraint;
+    }
     void project(Configuration* configuration, Params params);
 
     float angle;
@@ -113,7 +145,9 @@ class TetrahedralConstraint : public Constraint {
 
 public:
     TetrahedralConstraint(Mesh* mesh, int cardinality, Matrix3f originalShape) :
-        Constraint(mesh, cardinality), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant())) {}
+        Constraint(mesh, cardinality), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant())) {
+        type = ConstraintType::TetrahedralConstraint;
+    }
     void project(Configuration* configuration, Params params);
 
     Matrix3f inversedOriginalShape;
@@ -124,7 +158,9 @@ class StaticCollisionConstraint : public CollisionConstraint {
 
 public:
     StaticCollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, Vector3f position) :
-        CollisionConstraint(mesh, cardinality, normal), position(position) {}
+        CollisionConstraint(mesh, cardinality, normal), position(position) {
+        type = ConstraintType::StaticCollisionConstraint;
+    }
     void project(Configuration* configuration, Params params);
 
     Vector3f position;
@@ -134,7 +170,9 @@ class TriangleCollisionConstraint : public CollisionConstraint {
 
 public:
     TriangleCollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, float height) :
-        CollisionConstraint(mesh, cardinality, normal), height(height) {}
+        CollisionConstraint(mesh, cardinality, normal), height(height) {
+        type = ConstraintType::TriangleCollisionConstraint;
+    }
     void project(Configuration* configuration, Params params);
 
     float height;
