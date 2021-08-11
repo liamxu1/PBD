@@ -41,6 +41,11 @@ void Simulation::update() {
 
 void Simulation::simulate(Configuration *configuration) {
 
+    if (showStatus)
+    {
+        cout << "\n-------------------------------\n";
+    }
+
     configuration->lambda.clear();
     configuration->lambda.resize(configuration->estimatePositions.size(), 0.0f);
 
@@ -97,6 +102,8 @@ void Simulation::simulate(Configuration *configuration) {
     }
     params.timeStep = timeStep;
     params.compliance = compliance;
+    params.poisonRatio = poisonRatio;
+    params.YoungModulus = YongModulus;
 
     // Project constraints iteratively
     for (int iteration = 0; iteration < solverIterations; iteration++) {
@@ -112,11 +119,15 @@ void Simulation::simulate(Configuration *configuration) {
     }
 
     // Update positions and velocities
+    if (showStatus) cout << "Overall:\n";
     for (Mesh* mesh : configuration->simulatedObjects) {
         #pragma omp parallel for
         for (int i = 0; i < mesh->numVertices; i++) {
+            if (showStatus) cout << i + mesh->estimatePositionsOffset << ":\nVelocity:\t";
             mesh->velocities[i] = (configuration->estimatePositions[mesh->estimatePositionsOffset + i] - mesh->vertices[i]) / timeStep;
+            if (showStatus) cout << mesh->velocities[i][0] << ' ' << mesh->velocities[i][1] << ' ' << mesh->velocities[i][2] << "\nPosition:\t";
             mesh->vertices[i] = configuration->estimatePositions[mesh->estimatePositionsOffset + i];
+            if (showStatus) cout << mesh->vertices[i][0] << ' ' << mesh->vertices[i][1] << ' ' << mesh->vertices[i][2] << "\n\n";
         }
     }
 
@@ -133,9 +144,9 @@ void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh
 
     // Setup ray
     Vector3f rayOrigin = mesh->vertices[index];
-    Vector3f vertexToEstimate = mesh->vertices[index] - configuration->estimatePositions[mesh->estimatePositionsOffset + index];
+    Vector3f vertexToEstimate = configuration->estimatePositions[mesh->estimatePositionsOffset + index] - mesh->vertices[index];
     Vector3f rayDirection = Vector3f(vertexToEstimate);
-    rayDirection.normalize();
+    rayDirection /= rayDirection.norm();
 
     // Setup intersection variables
     float t = INFINITY;
@@ -163,7 +174,7 @@ void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh
     for (Mesh* staticMesh : configuration->staticObjects) {
         if (!staticMesh->isRigidBody) continue;
 
-        bool meshCollision = staticMesh->intersect(rayOrigin, rayDirection, t, normal, index, triangleIndex);
+        bool meshCollision = staticMesh->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
 
         // If a collision occured
         if (meshCollision && fabs(t) * 0.5f <= (vertexToEstimate).norm() + COLLISION_THRESHOLD) {

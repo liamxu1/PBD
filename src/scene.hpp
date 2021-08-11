@@ -63,6 +63,7 @@ private:
     Configuration* setupConfigurationC();
     Configuration* setupConfigurationD();
     Configuration* setupConfigurationE();
+    Configuration* setupConfigurationF();
     void addPlaneToConfiguration(Configuration* configuration);
     void setupEstimatePositionOffsets(Configuration* configuration);
 

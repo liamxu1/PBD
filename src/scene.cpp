@@ -18,7 +18,8 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationC());
     configurations.push_back(setupConfigurationD());
     configurations.push_back(setupConfigurationE());
-    currentConfiguration = configurations[2];
+    configurations.push_back(setupConfigurationF());
+    currentConfiguration = configurations[5];
 }
 
 Scene::~Scene() {
@@ -246,6 +247,27 @@ Configuration* Scene::setupConfigurationE()
     return configurationE;
 }
 
+Configuration* Scene::setupConfigurationF()
+{
+    Configuration* configurationF = new Configuration();
+    addPlaneToConfiguration(configurationF);
+
+    Vector3f colourA = { 0.6f,0.6f,0.f };
+    Vector3f colourB = { 0.f,0.6f,0.6f };
+    Vector3f colourC = { 0.6f,0.f,0.6f };
+
+    TetrahedralMesh* cubeA = new TetrahedralMesh("../resources/models/sceneF/cuboid.tet", colourA);
+    cubeA->gravityAffected = true;
+
+    configurationF->simulatedObjects.push_back(cubeA);
+
+    setupEstimatePositionOffsets(configurationF);
+
+    buildTetrahedralConstraints(configurationF, cubeA);
+
+    return configurationF;
+}
+
 void Scene::addPlaneToConfiguration(Configuration* configuration) {
     Vector3f planeColour = { 1.0f, 1.0f, 1.0f };
     TriangularMesh* plane = new TriangularMesh("../resources/models/plane.obj", planeColour);
@@ -268,4 +290,8 @@ void Scene::setupEstimatePositionOffsets(Configuration* configuration) {
     configuration->estimatePositions.resize((size_t) totalNumVertices, Vector3f::Zero());
     configuration->currentPositions.resize((size_t)totalNumVertices, Vector3f::Zero());
     configuration->lambda.resize((size_t)totalNumVertices, 0.0f);
+
+    for (Mesh* mesh : configuration->staticObjects) {
+        mesh->estimatePositionsOffset = -totalNumVertices;
+    }
 }

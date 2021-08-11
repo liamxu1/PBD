@@ -87,7 +87,6 @@ bool Mesh::intersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, Vector
     // Check each triangle to try and find an intersection
     for (int triangleIndex = 0; triangleIndex < numFaces; triangleIndex++) {
         float tTri = INFINITY;
-        float u, v;
         if (rayTriangleIntersect(rayOrigin, rayDirection, tTri, triangleIndex, vertexIndex) && fabs(tTri) < fabs(t)) {
             hit = true;
             t = tTri;
@@ -113,7 +112,7 @@ bool Mesh::rayTriangleIntersect(Vector3f rayOrigin, Vector3f rayDirection, float
     int i1 = triangles[triangleIndex].v[1].p;
     int i2 = triangles[triangleIndex].v[2].p;
 
-    if (i0 == vertexIndex || i1 == vertexIndex || i2 == vertexIndex) return false;
+    if (i0 + estimatePositionsOffset == vertexIndex || i1 + estimatePositionsOffset == vertexIndex || i2 + estimatePositionsOffset == vertexIndex) return false;
 
     // Get the triangle properties
     Vector3f v0 = vertices[i0];

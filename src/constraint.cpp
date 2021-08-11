@@ -12,7 +12,7 @@ void Constraint::preCompute(Configuration* configuration) {
         inverseMasses[i] = configuration->inverseMasses[indices[i]];
 }
 
-void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k)
+bool Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k)
 {
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
@@ -20,8 +20,9 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
         wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
     }
     
-    if (wSum < EPSILONTHRESHOLD) return;
+    if (wSum < EPSILONTHRESHOLD) return false;
 
+    if (showStatus) cout << typeNameString.at(type) << ":\n";
     switch (params.type)
     {
     case PBDType::normalPBD:
@@ -30,8 +31,13 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
         float kNew = 1.0f - pow(1.0f - k, 1.0f / params.solverIterations);
         for (int i = 0; i < cardinality; i++)
         {
-            configuration->estimatePositions[indices[i]] -= kNew * s * inverseMasses[i] * partialDerivatives[i];
+            Vector3f& vertex = configuration->estimatePositions[indices[i]];
+
+            if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+            vertex -= kNew * s * inverseMasses[i] * partialDerivatives[i];
+            if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
         }
+        if (showStatus) cout << '\n';
         break;
     }
 
@@ -49,8 +55,13 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
         for (int i = 0; i < cardinality; i++)
         {
             configuration->lambda[indices[i]] += dlambda[i];
-            configuration->estimatePositions[indices[i]] += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
+            Vector3f& vertex = configuration->estimatePositions[indices[i]];
+
+            if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+            vertex += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
+            if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
         }
+        if (showStatus) cout << '\n';
         break;
     }
 
@@ -62,6 +73,7 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
     }
 
     }
+    return true;
 }
 
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
@@ -232,7 +244,12 @@ void FixedConstraint::project(Configuration* configuration, Params params) {
         cout << "Fixed constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
         return;
     }
-    configuration->estimatePositions[indices[0]] = target;
+    Vector3f& vertex = configuration->estimatePositions[indices[0]];
+
+    if (showStatus) cout << "Static collision:\n";
+    if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+    vertex = target;
+    if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
 }
 
 void DistanceConstraint::project(Configuration* configuration, Params params) {
@@ -302,12 +319,18 @@ void StaticCollisionConstraint::project(Configuration* configuration, Params par
     // Check if constraint is already satisfied
     if (pointToPosition.dot(normal) >= 0.0f) return;
 
+    if (showStatus) cout << "Static collision:\n";
+
     float a = (p - position).dot(normal);
     Vector3f b = (p - position) / ((p - position).norm());
 
     Vector3f displacement = a * b;
 
-    configuration->estimatePositions[indices[0]] += displacement;
+    Vector3f& vertex = configuration->estimatePositions[indices[0]];
+
+    if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+    vertex += displacement;
+    if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
 }
 
 void TriangleCollisionConstraint::project(Configuration* configuration, Params params) {
@@ -327,12 +350,18 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
 
     if (qToP1.dot(n) - height >= 0.0f) return;
 
+    if (showStatus) cout << "Triangle collision:\n";
+
     float a = (q - p1).dot(n) - height;
     Vector3f b = n;
 
     Vector3f displacement = a * b;
 
-    configuration->estimatePositions[indices[0]] -= displacement;
+    Vector3f& vertex = configuration->estimatePositions[indices[0]];
+
+    if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+    vertex -= displacement;
+    if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
 }
 
 pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params)
@@ -412,5 +441,20 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
         partialDerivatives[3] -= partialDerivatives[i];
     }
 
-    commonOnProject(configuration, params, energy, partialDerivatives);
+    if (commonOnProject(configuration, params, energy, partialDerivatives) && showStatus)
+    {
+        cout << "old" << '\t' << phi << '\n';
+
+        for (int i = 0; i < 4; i++)
+        {
+            currentPositions[i] = configuration->estimatePositions[indices[i]];
+        }
+        newShape << currentPositions[0] - currentPositions[3], currentPositions[1] - currentPositions[3], currentPositions[2] - currentPositions[3];
+        F = newShape * inversedOriginalShape;
+
+        phi = calculateStressTensorAndStressEnergyDensity(F, params).second;
+        cout << "new" << '\t' << phi << '\n';
+    }
+
+    
 }

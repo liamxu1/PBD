@@ -17,6 +17,8 @@ using namespace Eigen;
 class Mesh;
 struct Configuration;
 
+const bool SHOWALLINFO = false;
+
 enum class PBDType
 {
     normalPBD,
@@ -75,8 +77,8 @@ struct Params {
 class Constraint {
 
 public:
-    Constraint(Mesh* mesh, int cardinality) :
-            mesh(mesh), cardinality(cardinality) {}
+    Constraint(Mesh* mesh, int cardinality, bool showStatus = SHOWALLINFO) :
+        mesh(mesh), cardinality(cardinality), showStatus(showStatus){}
     void preCompute(Configuration* configuration);
     virtual void project(Configuration* configuration, Params params) {}
 
@@ -87,8 +89,10 @@ public:
 
     ConstraintType type = ConstraintType::NoneType;
 
+    bool showStatus;
+
 protected:
-    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k = 1.0f);
+    bool commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k = 1.0f);
 
 };
 

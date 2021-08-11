@@ -33,6 +33,8 @@ public:
     float stretchFactor = 0.999f;
     float bendFactor = 0.3f;
     float dampFactor = 0.01f;
+    float poisonRatio = 0.3f;
+    float YongModulus = 20;
 
     bool wireframe = true;
     
@@ -41,7 +43,7 @@ public:
     /// 0: Normal PBD
     /// 1: XPBD
     /// </summary>
-    int type = 1;
+    int type = 0;
 
     /// <summary>
     /// dampType
@@ -65,6 +67,7 @@ private:
     // Forces
     float windOscillation = 0.0f;
 
+    bool showStatus = SHOWALLINFO;
 };
 
 #endif //POSITIONBASEDDYNAMICS_SIMULATION_HPP
