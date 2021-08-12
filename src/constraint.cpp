@@ -12,7 +12,7 @@ void Constraint::preCompute(Configuration* configuration) {
         inverseMasses[i] = configuration->inverseMasses[indices[i]];
 }
 
-bool Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k)
+void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k)
 {
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
@@ -20,7 +20,7 @@ bool Constraint::commonOnProject(Configuration* configuration, Params params, fl
         wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
     }
     
-    if (wSum < EPSILONTHRESHOLD) return false;
+    if (wSum < EPSILONTHRESHOLD) return;
 
     if (showStatus) cout << typeNameString.at(type) << ":\n";
     switch (params.type)
@@ -73,7 +73,6 @@ bool Constraint::commonOnProject(Configuration* configuration, Params params, fl
     }
 
     }
-    return true;
 }
 
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
@@ -432,7 +431,7 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
     float phi = temp.second;
 
     float energy = phi * initialVolume;
-    Matrix3f partialDerivativesInMatrix = initialVolume * P * inversedOriginalShape;
+    Matrix3f partialDerivativesInMatrix = initialVolume * P * inversedOriginalShape.transpose();
 
     vector<Vector3f> partialDerivatives(4, Vector3f::Zero());
     for (int i = 0; i < 3; i++)
@@ -441,20 +440,6 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
         partialDerivatives[3] -= partialDerivatives[i];
     }
 
-    if (commonOnProject(configuration, params, energy, partialDerivatives) && showStatus)
-    {
-        cout << "old" << '\t' << phi << '\n';
+    commonOnProject(configuration, params, energy, partialDerivatives);
 
-        for (int i = 0; i < 4; i++)
-        {
-            currentPositions[i] = configuration->estimatePositions[indices[i]];
-        }
-        newShape << currentPositions[0] - currentPositions[3], currentPositions[1] - currentPositions[3], currentPositions[2] - currentPositions[3];
-        F = newShape * inversedOriginalShape;
-
-        phi = calculateStressTensorAndStressEnergyDensity(F, params).second;
-        cout << "new" << '\t' << phi << '\n';
-    }
-
-    
 }

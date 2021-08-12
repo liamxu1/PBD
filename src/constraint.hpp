@@ -92,7 +92,7 @@ public:
     bool showStatus;
 
 protected:
-    bool commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k = 1.0f);
+    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k = 1.0f);
 
 };
 
