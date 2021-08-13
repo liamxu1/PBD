@@ -71,10 +71,18 @@ struct SimpleTetrahedron{
     SimpleVertex v[4];
 };
 
+enum class MeshType
+{
+    triangular,
+    tetrahedral
+};
+
 class Mesh {
 
 public:
+    Mesh(const char* name, MeshType type) :meshName(name), meshType(type) {}
     virtual ~Mesh() = 0;
+    virtual void updateCoefs(){}
     void reset();
     void applyImpulse(Vector3f force);
     void translate(Vector3f translate);
@@ -83,8 +91,8 @@ public:
 
     void dampVelocity(float kDamp = 0.1f, int type = 1);
 
-    int numVertices;
-    int numFaces;
+    int numVertices = -1;
+    int numFaces = -1;
 
     Vector3f position = Vector3f(0.0f, 0.0f, 0.0f);
 
@@ -97,21 +105,27 @@ public:
     // Simulation fields
     vector<Vector3f> velocities;
     vector<float> inverseMass;
-    int estimatePositionsOffset;
+    int estimatePositionsOffset = -1;
     bool isRigidBody = false;
     bool gravityAffected = false;
     bool windAffected = false;
+
+    string meshName;
+    MeshType meshType;
+    bool needCoef = false;
+
+    vector<float> backupCoefData;
 
 protected:
     bool rayTriangleIntersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, int triangleIndex, int vertexIndex);
     void generateSurfaceNormals();
 
     // VBOs
-    GLuint positionVBO;
-    GLuint normalVBO;
+    GLuint positionVBO = 0;
+    GLuint normalVBO = 0;
 
     // Rendering
-    GLuint shader;
+    GLuint shader = 0;
     Vector3f colour;
 
 };
@@ -119,13 +133,24 @@ protected:
 class TriangularMesh : public Mesh
 {
 public:
-    TriangularMesh(string filename, Vector3f colour, float inverseMass = 1.0f);
+    TriangularMesh(const char* name, string filename, Vector3f colour, float inverseMass = 1.0f);
     ~TriangularMesh(){}
+
+    void updateCoefs();
 
     vector<Vector2f> uvs;
     vector<Vector3f> normals;
     set<Edge, EdgeCompare> edges;
     map<Edge, vector<SimpleTriangle>, EdgeCompare> adjacentTriangles;
+
+    float stretchFactor = 0.999f;
+    float bendFactor = 0.3f;
+
+    // for xpbd
+    float stretchCompliance = 1e-7;
+    float bendCompliance = 1e-5;
+
+    float dampCompliance = 0;
 
 private:
     void parseObjFile(string filename);
@@ -134,11 +159,15 @@ private:
 class TetrahedralMesh : public Mesh
 {
 public:
-    TetrahedralMesh(string filename, Vector3f colour, float inverseMass = 1.0f);
+    TetrahedralMesh(const char* name, string filename, Vector3f colour, float inverseMass = 1.0f);
     ~TetrahedralMesh(){}
 
+    void updateCoefs();
     vector<SimpleTetrahedron> tetrahedrons;
     int numBodies;
+
+    float poisonRatio = 0.3f;
+    float YongModulus = 20;
 
 private:
 

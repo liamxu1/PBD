@@ -24,7 +24,9 @@ Matrix3f CrossMat(Vector3f vec)
     return mat;
 }
 
-TriangularMesh::TriangularMesh(string filename, Vector3f colour, float inverseMass){
+TriangularMesh::TriangularMesh(const char* name, string filename, Vector3f colour, float inverseMass)
+    :Mesh(name, MeshType::triangular)
+{
 
     this->colour = colour;
     parseObjFile(filename);
@@ -41,6 +43,17 @@ TriangularMesh::TriangularMesh(string filename, Vector3f colour, float inverseMa
     // Setup simulation
     reset();
     this->inverseMass.resize((size_t)numVertices, inverseMass);
+
+    backupCoefData = { stretchFactor,bendFactor,stretchCompliance * (float)1e5,bendCompliance * (float)1e5,dampCompliance };
+}
+
+void TriangularMesh::updateCoefs()
+{
+    stretchFactor = backupCoefData[0];
+    bendFactor = backupCoefData[1];
+    stretchCompliance = backupCoefData[2] * float(1e-5);
+    bendCompliance = backupCoefData[3] * float(1e-5);
+    dampCompliance = backupCoefData[4];
 }
 
 Mesh::~Mesh() {
@@ -366,7 +379,8 @@ void TriangularMesh::parseObjFile(string filename) {
     generateSurfaceNormals();
 }
 
-TetrahedralMesh::TetrahedralMesh(string filename, Vector3f colour, float inverseMass)
+TetrahedralMesh::TetrahedralMesh(const char* name, string filename, Vector3f colour, float inverseMass)
+    : Mesh(name, MeshType::tetrahedral)
 {
     this->colour = colour;
     parseTetFile(filename);
@@ -383,6 +397,14 @@ TetrahedralMesh::TetrahedralMesh(string filename, Vector3f colour, float inverse
     // Setup simulation
     reset();
     this->inverseMass.resize((size_t)numVertices, inverseMass);
+
+    backupCoefData = { poisonRatio,YongModulus };
+}
+
+void TetrahedralMesh::updateCoefs()
+{
+    poisonRatio = backupCoefData[0];
+    YongModulus = backupCoefData[1];
 }
 
 void TetrahedralMesh::parseTetFile(string filename)

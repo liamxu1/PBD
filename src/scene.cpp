@@ -19,7 +19,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationD());
     configurations.push_back(setupConfigurationE());
     configurations.push_back(setupConfigurationF());
-    currentConfiguration = configurations[5];
+    currentConfiguration = configurations[2];
 }
 
 Scene::~Scene() {
@@ -87,22 +87,45 @@ int Scene::sceneNum()
     return configurations.size();
 }
 
+bool Scene::isClothSimulation(int index)
+{
+    Configuration* configuration = nullptr;
+    if (index == -1)  configuration = currentConfiguration;
+    else if (index < 0 || index >= sceneNum())
+    {
+        cout << "Incorrectly use function Scene::isTriangularMesh()\nIndex should be within [0, sceneNum - 1]\n\n";
+        return false;
+    }
+    else configuration = configurations[index];
+    int count = 0;
+    for (auto mesh : configuration->simulatedObjects)
+    {
+        if (mesh->meshType != MeshType::triangular) return false;
+        if (mesh->needCoef) count++;
+    }
+    if (count > 0)
+        return true;
+    return false;
+}
+
 Configuration* Scene::setupConfigurationA() {
     Configuration* configurationA = new Configuration();
 
     addPlaneToConfiguration(configurationA);
 
     Vector3f flagPoleColour = { 0.337f, 0.184f, 0.054f };
-    TriangularMesh* flagPole = new TriangularMesh("../resources/models/sceneA/flagPole.obj", flagPoleColour);
-    TriangularMesh* flagPole2 = new TriangularMesh("../resources/models/sceneA/flagPole2.obj", flagPoleColour);
+    TriangularMesh* flagPole = new TriangularMesh("", "../resources/models/sceneA/flagPole.obj", flagPoleColour);
+    TriangularMesh* flagPole2 = new TriangularMesh("", "../resources/models/sceneA/flagPole2.obj", flagPoleColour);
 
     Vector3f flagColour = { 0.6f, 0.0f, 0.0f };
-    TriangularMesh* flag = new TriangularMesh("../resources/models/sceneA/flag.obj", flagColour);
+    TriangularMesh* flag = new TriangularMesh("FlagA", "../resources/models/sceneA/flag.obj", flagColour);
     flag->gravityAffected = true;
     flag->windAffected = true;
-    TriangularMesh* flagHigh = new TriangularMesh("../resources/models/sceneA/flagHigh.obj", flagColour);
+    flag->needCoef = true;
+    TriangularMesh* flagHigh = new TriangularMesh("FlagB", "../resources/models/sceneA/flagHigh.obj", flagColour);
     flagHigh->gravityAffected = true;
     flagHigh->windAffected = true;
+    flagHigh->needCoef = true;
 
     configurationA->staticObjects.push_back(flagPole);
     configurationA->staticObjects.push_back(flagPole2);
@@ -128,11 +151,12 @@ Configuration* Scene::setupConfigurationB() {
     addPlaneToConfiguration(configurationB);
 
     Vector3f clothColour = { 0.0f, 0.6f, 0.0f };
-    TriangularMesh* cloth = new TriangularMesh("../resources/models/sceneB/cloth.obj", clothColour);
+    TriangularMesh* cloth = new TriangularMesh("Cloth", "../resources/models/sceneB/cloth.obj", clothColour);
     cloth->gravityAffected = true;
+    cloth->needCoef = true;
 
     Vector3f resetObjectColour = { 0.5f, 0.5f, 0.5f };
-    TriangularMesh* restObject = new TriangularMesh("../resources/models/sceneB/sphere.obj", resetObjectColour);
+    TriangularMesh* restObject = new TriangularMesh("", "../resources/models/sceneB/sphere.obj", resetObjectColour);
     restObject->isRigidBody = true;
 
     configurationB->simulatedObjects.push_back(cloth);
@@ -152,15 +176,16 @@ Configuration* Scene::setupConfigurationC() {
     addPlaneToConfiguration(configurationC);
 
     Vector3f solidColour = { 1.0f, 1.0f, 1.0f };
-    TriangularMesh* attachPoints = new TriangularMesh("../resources/models/sceneC/attachPoints.obj", solidColour, 0.0f);
+    TriangularMesh* attachPoints = new TriangularMesh("", "../resources/models/sceneC/attachPoints.obj", solidColour, 0.0f);
     attachPoints->isRigidBody = true;
 
     Vector3f clothColour = { 0.8f, 0.4f, 0.1f };
-    TriangularMesh* cloth = new TriangularMesh("../resources/models/sceneC/cloth.obj", clothColour);
+    TriangularMesh* cloth = new TriangularMesh("Cloth", "../resources/models/sceneC/cloth.obj", clothColour);
     cloth->gravityAffected = true;
     cloth->windAffected = true;
+    cloth->needCoef = true;
 
-    TriangularMesh* bar = new TriangularMesh("../resources/models/sceneC/bar.obj", solidColour, 0.5f);
+    TriangularMesh* bar = new TriangularMesh("Bar", "../resources/models/sceneC/bar.obj", solidColour, 0.5f);
     bar->isRigidBody = true;
     bar->gravityAffected = true;
     bar->windAffected = true;
@@ -191,22 +216,22 @@ Configuration* Scene::setupConfigurationD() {
     Vector3f colourC = { 0.0f, 1.0f, 1.0f };
     Vector3f colourD = { 0.4f, 0.4f, 0.4f };
 
-    TriangularMesh* cube = new TriangularMesh("../resources/models/sceneD/cube.obj", colourA);
+    TriangularMesh* cube = new TriangularMesh("Cube", "../resources/models/sceneD/cube.obj", colourA);
     cube->isRigidBody = true;
     cube->gravityAffected = true;
     cube->windAffected = true;
 
-    TriangularMesh* pyramid = new TriangularMesh("../resources/models/sceneD/pyramid.obj", colourB);
+    TriangularMesh* pyramid = new TriangularMesh("Pyramid", "../resources/models/sceneD/pyramid.obj", colourB);
     pyramid->isRigidBody = true;
     pyramid->gravityAffected = true;
     pyramid->windAffected = true;
 
-    TriangularMesh* cylinder = new TriangularMesh("../resources/models/sceneD/cylinder.obj", colourC);
+    TriangularMesh* cylinder = new TriangularMesh("Cylinder", "../resources/models/sceneD/cylinder.obj", colourC);
     cylinder->isRigidBody = true;
     cylinder->gravityAffected = true;
     cylinder->windAffected = true;
 
-    TriangularMesh* sphere = new TriangularMesh("../resources/models/sceneD/sphere.obj", colourD);
+    TriangularMesh* sphere = new TriangularMesh("Sphere", "../resources/models/sceneD/sphere.obj", colourD);
     sphere->isRigidBody = true;
     sphere->gravityAffected = true;
     sphere->windAffected = true;
@@ -233,10 +258,11 @@ Configuration* Scene::setupConfigurationE()
     addPlaneToConfiguration(configurationE);
 
     Vector3f colourA = { 0.0f,1.0f,0.0f };
-    TetrahedralMesh* cube = new TetrahedralMesh("../resources/models/sceneE/cube.tet", colourA);
+    TetrahedralMesh* cube = new TetrahedralMesh("Cube", "../resources/models/sceneE/cube.tet", colourA);
 
     cube->isRigidBody = true;
     cube->gravityAffected = true;
+    cube->needCoef = true;
 
     configurationE->simulatedObjects.push_back(cube);
 
@@ -256,8 +282,9 @@ Configuration* Scene::setupConfigurationF()
     Vector3f colourB = { 0.f,0.6f,0.6f };
     Vector3f colourC = { 0.6f,0.f,0.6f };
 
-    TetrahedralMesh* cubeA = new TetrahedralMesh("../resources/models/sceneF/cuboid.tet", colourA);
+    TetrahedralMesh* cubeA = new TetrahedralMesh("Cube", "../resources/models/sceneF/cubeA.tet", colourA);
     cubeA->gravityAffected = true;
+    cubeA->needCoef = true;
 
     configurationF->simulatedObjects.push_back(cubeA);
 
@@ -270,7 +297,7 @@ Configuration* Scene::setupConfigurationF()
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {
     Vector3f planeColour = { 1.0f, 1.0f, 1.0f };
-    TriangularMesh* plane = new TriangularMesh("../resources/models/plane.obj", planeColour);
+    TriangularMesh* plane = new TriangularMesh("", "../resources/models/plane.obj", planeColour);
     plane->isRigidBody = true;
 
     configuration->staticObjects.push_back(plane);

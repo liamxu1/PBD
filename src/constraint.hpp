@@ -55,20 +55,10 @@ const static map<ConstraintType, string> typeNameString = {
 
 struct Params {
     int solverIterations;
-    float stretchFactor;
-    float bendFactor;
     float timeStep;
     
-    // for xpbd
+    bool useXPBDDamp;
 
-    float compliance;
-    float dampStiffness;
-
-    // for continuous material
-
-    float poisonRatio;
-    float YoungModulus;
-    
     PBDType type = PBDType::none;
     ConstitutiveMaterialModel modelType = ConstitutiveMaterialModel::NeoHookeanModel;
 
@@ -77,8 +67,8 @@ struct Params {
 class Constraint {
 
 public:
-    Constraint(Mesh* mesh, int cardinality, bool showStatus = SHOWALLINFO) :
-        mesh(mesh), cardinality(cardinality), showStatus(showStatus){}
+    Constraint(Mesh* mesh, int cardinality, bool useMeshCoef, bool showStatus = SHOWALLINFO) :
+        mesh(mesh), cardinality(cardinality), showStatus(showStatus), useMeshCoef(useMeshCoef){}
     void preCompute(Configuration* configuration);
     virtual void project(Configuration* configuration, Params params) {}
 
@@ -92,15 +82,20 @@ public:
     bool showStatus;
 
 protected:
-    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k = 1.0f);
+    // Put in needed parameters by coeffs
+    // e.g.
+    // In normal PBD condition, put in {k}
+    // In XPBD condition, put in {compliance, damp factor}
+    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float> &coeffs = vector<float>({ 1 }));
 
+    bool useMeshCoef;
 };
 
 class FixedConstraint : public Constraint {
 
 public:
-    FixedConstraint(Mesh* mesh, int cardinality, Vector3f target) :
-        Constraint(mesh, cardinality), target(target) {
+    FixedConstraint(Mesh* mesh, int cardinality, Vector3f target, bool useMeshCoef = false) :
+        Constraint(mesh, cardinality, useMeshCoef), target(target) {
         type = ConstraintType::FixedConstraint;
     }
     void project(Configuration* configuration, Params params);
@@ -112,8 +107,8 @@ public:
 class DistanceConstraint : public Constraint {
 
 public:
-    DistanceConstraint(Mesh* mesh, int cardinality, float distance) :
-        Constraint(mesh, cardinality), distance(distance) {
+    DistanceConstraint(Mesh* mesh, int cardinality, float distance, bool useMeshCoef = false) :
+        Constraint(mesh, cardinality, useMeshCoef), distance(distance) {
         type = ConstraintType::DistanceConstraint;
     }
     void project(Configuration* configuration, Params params);
@@ -124,8 +119,8 @@ public:
 class BendConstraint : public Constraint {
 
 public:
-    BendConstraint(Mesh* mesh, int cardinality, float angle) :
-        Constraint(mesh, cardinality), angle(angle) {
+    BendConstraint(Mesh* mesh, int cardinality, float angle, bool useMeshCoef = false) :
+        Constraint(mesh, cardinality, useMeshCoef), angle(angle) {
         type = ConstraintType::BendConstraint;
     }
     void project(Configuration* configuration, Params params);
@@ -137,8 +132,8 @@ public:
 class CollisionConstraint : public Constraint {
 
 public:
-    CollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal) :
-            Constraint(mesh, cardinality), normal(normal) {}
+    CollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, bool useMeshCoef) :
+            Constraint(mesh, cardinality, useMeshCoef), normal(normal) {}
     virtual void project(Configuration* configuration, Params params) {}
 
     Vector3f normal;
@@ -148,8 +143,8 @@ public:
 class TetrahedralConstraint : public Constraint {
 
 public:
-    TetrahedralConstraint(Mesh* mesh, int cardinality, Matrix3f originalShape) :
-        Constraint(mesh, cardinality), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant()) / 6.f) {
+    TetrahedralConstraint(Mesh* mesh, int cardinality, Matrix3f originalShape, bool useMeshCoef = false) :
+        Constraint(mesh, cardinality, useMeshCoef), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant()) / 6.f) {
         type = ConstraintType::TetrahedralConstraint;
     }
     void project(Configuration* configuration, Params params);
@@ -161,8 +156,8 @@ public:
 class StaticCollisionConstraint : public CollisionConstraint {
 
 public:
-    StaticCollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, Vector3f position) :
-        CollisionConstraint(mesh, cardinality, normal), position(position) {
+    StaticCollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, Vector3f position, bool useMeshCoef = false) :
+        CollisionConstraint(mesh, cardinality, normal, useMeshCoef), position(position) {
         type = ConstraintType::StaticCollisionConstraint;
     }
     void project(Configuration* configuration, Params params);
@@ -173,8 +168,8 @@ public:
 class TriangleCollisionConstraint : public CollisionConstraint {
 
 public:
-    TriangleCollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, float height) :
-        CollisionConstraint(mesh, cardinality, normal), height(height) {
+    TriangleCollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, float height, bool useMeshCoef = false) :
+        CollisionConstraint(mesh, cardinality, normal, useMeshCoef), height(height) {
         type = ConstraintType::TriangleCollisionConstraint;
     }
     void project(Configuration* configuration, Params params);
@@ -184,7 +179,7 @@ public:
 };
 
 // calculate stress tensor and stress energy density according to deformation gradient F
-pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params);
+pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params, float PoisonRatio, float YoungModulus);
 
 // Constraint building
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh);
@@ -192,10 +187,10 @@ void buildRigidBodyConstraints(Configuration* configuration, Mesh* mesh);
 void buildBendConstraints(Configuration* configuration, TriangularMesh* mesh);
 void buildTwoWayCouplingConstraints(Configuration* configuration, Mesh* meshA);
 void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, Vector3f target);
-void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, Mesh* secondMesh = nullptr);
+void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, bool useMeshCoef = false, Mesh* secondMesh = nullptr);
 void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, int indexC, int indexD, float angle);
 void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh);
-TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape);
+TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape, bool useMeshCoef = false);
 CollisionConstraint* buildStaticCollisionConstraint(Mesh* mesh, int index, Vector3f normal, Vector3f position);
 CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC);
 

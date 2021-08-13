@@ -12,7 +12,7 @@ void Constraint::preCompute(Configuration* configuration) {
         inverseMasses[i] = configuration->inverseMasses[indices[i]];
 }
 
-void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, float k)
+void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float>& coeffs)
 {
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
@@ -27,6 +27,8 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
     {
     case PBDType::normalPBD:
     {
+        assert(coeffs.size() == 1);
+        float k = coeffs[0];
         float s = C / wSum;
         float kNew = 1.0f - pow(1.0f - k, 1.0f / params.solverIterations);
         for (int i = 0; i < cardinality; i++)
@@ -43,9 +45,11 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
 
     case PBDType::XPBD:
     {
+        assert(coeffs.size() == 2);
+        float compliance = coeffs[0], dampFactor = coeffs[1];
         vector<float> dlambda(cardinality, 0.f);
-        float alpha = params.compliance / powf(params.timeStep, 2);
-        float gamma = alpha * params.dampStiffness * params.timeStep;
+        float alpha = compliance / powf(params.timeStep, 2);
+        float gamma = alpha * dampFactor * params.timeStep;
         for (int i = 0; i < cardinality; i++)
         {
             dlambda[i] = (-C - alpha * configuration->lambda[indices[i]]
@@ -82,7 +86,7 @@ void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
         int v0 = edge.v[0].p;
         int v1 = edge.v[1].p;
 
-        buildDistanceConstraint(configuration, mesh, v0, v1, (mesh->vertices[v0] - mesh->vertices[v1]).norm());
+        buildDistanceConstraint(configuration, mesh, v0, v1, (mesh->vertices[v0] - mesh->vertices[v1]).norm(), true);
     }
 }
 
@@ -146,7 +150,7 @@ void buildTwoWayCouplingConstraints(Configuration* configuration, Mesh* meshA) {
         for (int i = 0; i < meshA->numVertices; i++) {
             for (int j = 0; j < meshB->numVertices; j++) {
                 if (meshA->vertices[i] == meshB->vertices[j]) {
-                    buildDistanceConstraint(configuration, meshA, i, j, 0.0f, meshB);
+                    buildDistanceConstraint(configuration, meshA, i, j, 0.0f, false, meshB);
                 }
             }
         }
@@ -163,8 +167,8 @@ void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, V
     configuration->constraints.push_back(constraint);
 }
 
-void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, Mesh* secondMesh) {
-    Constraint* constraint = new DistanceConstraint(mesh, 2, distance);
+void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, bool useMeshCoef, Mesh* secondMesh) {
+    Constraint* constraint = new DistanceConstraint(mesh, 2, distance, useMeshCoef);
     constraint->indices.push_back(indexA + mesh->estimatePositionsOffset);
 
     // If a second mesh is provided we are building a constraint between two dynamic objects
@@ -180,7 +184,7 @@ void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int index
 }
 
 void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, int indexC, int indexD, float angle) {
-    Constraint* constraint = new BendConstraint(mesh, 4, angle);
+    Constraint* constraint = new BendConstraint(mesh, 4, angle, true);
     constraint->indices.push_back(indexA + mesh->estimatePositionsOffset);
     constraint->indices.push_back(indexB + mesh->estimatePositionsOffset);
     constraint->indices.push_back(indexC + mesh->estimatePositionsOffset);
@@ -219,16 +223,16 @@ void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* 
         Matrix3f originalShape = Matrix3f::Zero();
         originalShape << mesh->vertices[indexA] - mesh->vertices[indexD], mesh->vertices[indexB] - mesh->vertices[indexD], mesh->vertices[indexC] - mesh->vertices[indexD];
 
-        auto constraint = buildTetrahedralConstraint(mesh, indexA, indexB, indexC, indexD, originalShape);
+        auto constraint = buildTetrahedralConstraint(mesh, indexA, indexB, indexC, indexD, originalShape, true);
         constraint->preCompute(configuration);
 
         configuration->constraints.push_back(constraint);
     }
 }
 
-TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape)
+TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape, bool useMeshCoef)
 {
-    TetrahedralConstraint* constraint = new TetrahedralConstraint(mesh, 4, originalShape);
+    TetrahedralConstraint* constraint = new TetrahedralConstraint(mesh, 4, originalShape, useMeshCoef);
     constraint->indices.push_back(indexA + mesh->estimatePositionsOffset);
     constraint->indices.push_back(indexB + mesh->estimatePositionsOffset);
     constraint->indices.push_back(indexC + mesh->estimatePositionsOffset);
@@ -267,7 +271,24 @@ void DistanceConstraint::project(Configuration* configuration, Params params) {
 
     vector<Vector3f> partialDerivatives = { n, -n };
 
-    commonOnProject(configuration, params, a, partialDerivatives, params.stretchFactor);
+    vector<float> coeffs;
+    if (mesh->meshType == MeshType::triangular)
+    {
+        if (params.type == PBDType::normalPBD)
+        {
+            float k = useMeshCoef ? dynamic_cast<TriangularMesh*>(mesh)->stretchFactor : 1.0f;
+            coeffs.push_back(k);
+        }
+        else if (params.type == PBDType::XPBD)
+        {
+            coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance);
+            if (params.useXPBDDamp)
+                coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
+            else coeffs.push_back(0.f);
+        }
+    }
+    else coeffs.push_back(1.0);
+    commonOnProject(configuration, params, a, partialDerivatives, coeffs);
 }
 
 void BendConstraint::project(Configuration* configuration, Params params) {
@@ -305,7 +326,23 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     float coef = sqrtf(1.0f - d * d + EPSILON);
     vector<Vector3f> partialDerivatives = { q1 / coef,q2 / coef,q3 / coef,q4 / coef };
 
-    commonOnProject(configuration, params, acosf(d) - angle, partialDerivatives, params.bendFactor);
+    vector<float> coeffs;
+    if (mesh->meshType == MeshType::triangular)
+    {
+        if (params.type == PBDType::normalPBD)
+        {
+            coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->bendFactor);
+        }
+        else if (params.type == PBDType::XPBD)
+        {
+            coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->bendCompliance);
+            if (params.useXPBDDamp)
+                coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
+            else coeffs.push_back(0.f);
+        }
+    }
+    else coeffs.push_back(1.0);
+    commonOnProject(configuration, params, acosf(d) - angle, partialDerivatives, coeffs);
 
 }
 
@@ -363,9 +400,9 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
 }
 
-pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params)
+pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params, float PoisonRatio, float YoungModulus)
 {
-    float nu = params.poisonRatio, k = params.YoungModulus;
+    float nu = PoisonRatio, k = YoungModulus;
     // lame coefficients
     float mu = k / (2.f * (1.f + nu)), lambda = k * nu / ((1.f + nu) * (1.f - 2.f * nu));
 
@@ -422,7 +459,9 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
     // deformation gradient
     Matrix3f F = newShape * inversedOriginalShape;
 
-    auto temp = calculateStressTensorAndStressEnergyDensity(F, params);
+    float PoisonRatio = dynamic_cast<TetrahedralMesh*>(mesh)->poisonRatio, YoungModulus = dynamic_cast<TetrahedralMesh*>(mesh)->YongModulus;
+
+    auto temp = calculateStressTensorAndStressEnergyDensity(F, params, PoisonRatio, YoungModulus);
 
     // stress tensor
     Matrix3f P = temp.first;

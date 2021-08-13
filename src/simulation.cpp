@@ -52,6 +52,10 @@ void Simulation::simulate(Configuration *configuration) {
     float dampfactor = dampFactor;
     int damptype = dampType;
 
+    for (auto mesh : configuration->simulatedObjects) {
+        if (mesh->needCoef) mesh->updateCoefs();
+    }
+
     // Apply external forces
     for (Mesh* mesh : configuration->simulatedObjects) {
         if (mesh->gravityAffected) mesh->applyImpulse(2.0f * timeStep * Vector3f(0, -gravity, 0));
@@ -86,9 +90,6 @@ void Simulation::simulate(Configuration *configuration) {
     // Setup constraint parameters
     Params params;
     params.solverIterations = solverIterations;
-    params.stretchFactor = stretchFactor;
-    params.bendFactor = bendFactor;
-    params.dampStiffness = (dampType == 3) ? dampfactor : 0.0f;
     switch (type)
     {
     case 0:
@@ -101,9 +102,7 @@ void Simulation::simulate(Configuration *configuration) {
         break;
     }
     params.timeStep = timeStep;
-    params.compliance = compliance;
-    params.poisonRatio = poisonRatio;
-    params.YoungModulus = YongModulus;
+    params.useXPBDDamp = (dampType == 3);
 
     // Project constraints iteratively
     for (int iteration = 0; iteration < solverIterations; iteration++) {
@@ -232,6 +231,10 @@ void Simulation::updateCollisionVelocities(CollisionConstraint* constraint) {
 void Simulation::renderGUI() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.FrameRounding = 6.0f;
+    style.GrabRounding = 6.0f;
+
     ImGui::Begin("Simulator");
 
     ImGui::Text("Scene Selection");
@@ -241,8 +244,13 @@ void Simulation::renderGUI() {
     for (int i = 0; i < sceneNum; i++)
     {
         info[11] = 'A' + i;
-        if (ImGui::Button(info)) scene->setConfiguration(i);
+        if (ImGui::Button(info))
+        {
+            scene->setConfiguration(i);
+        }
     }
+
+    ImGui::Checkbox("Edit coefficients", &adjustCoefficientWindow);
 
     ImGui::Text("Solver Iterations");
     ImGui::SliderInt("##solverIterations", &solverIterations, 1, 50, "%.0f");
@@ -255,15 +263,6 @@ void Simulation::renderGUI() {
 
     ImGui::Text("WindSpeed");
     ImGui::SliderFloat("##windSpeed", &windSpeed, 0.01f, 10.0f, "%.2f");
-
-    //ImGui::Text("Velocity Damping");
-    //ImGui::SliderFloat("##velocityDamping", &velocityDamping, 0.5f, 1.0f, "%.3f");
-
-    ImGui::Text("Stretch Factor");
-    ImGui::SliderFloat("##stretchFactor", &stretchFactor, 0.01f, 1.0f, "%.3f");
-
-    ImGui::Text("Bend Factor");
-    ImGui::SliderFloat("##bendFactor", &bendFactor, 0.0f, 1.0f, "%.3f");
 
     ImGui::Text("Wireframe");
     ImGui::Checkbox("##wireframe", &wireframe);
@@ -278,4 +277,71 @@ void Simulation::renderGUI() {
     ImGui::Combo("##dampType", &dampType, "None\0Simple\0Rotate\0Extended(in XPBD only)\0\0");
 
     ImGui::End();
+
+    if (adjustCoefficientWindow)
+    {
+        ImGui::Begin("Coefficient Editor");
+        for (auto &mesh : scene->currentConfiguration->simulatedObjects)
+        {
+            if (!mesh->needCoef) continue;
+            ImGui::Text(mesh->meshName.c_str());
+            if (type == 0 && mesh->meshType == MeshType::triangular)
+            {
+                ImGui::Text("Stretch Factor");
+                ImGui::SliderFloat((string("##stretchFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.0f, 1.0f);
+
+                ImGui::Text("Bend Factor");
+                ImGui::SliderFloat((string("##bendFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[1]), 0.0f, 1.0f);
+            }
+            else if (type == 1 && mesh->meshType == MeshType::triangular)
+            {
+                ImGui::Text("Stretch Compliance * 10^(-5)");
+                ImGui::SliderFloat((string("##stretchFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[2]), 0.001f, 1.0f);
+
+                ImGui::Text("Bend Compliance * 10^(-5)");
+                ImGui::SliderFloat((string("##bendFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[3]), 0.001f, 1.0f);
+
+                ImGui::Text("Damp Compliance * 10^(-5)");
+                ImGui::SliderFloat((string("##dampFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[4]), 0.001f, 1.0f);
+            }
+            else if (type == 0 && mesh->meshType == MeshType::tetrahedral)
+            {
+                ImGui::Text("Poison's Ratio");
+                ImGui::SliderFloat((string("##PoisonRatio") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.001f, 0.5f);
+
+                ImGui::Text("Young's Modulus");
+                ImGui::SliderFloat((string("##YoungModulus") + mesh->meshName).c_str(), &(mesh->backupCoefData[1]), 1.0f, 100.f);
+            }
+        }
+        ImGui::End();
+    }
+
+    if (!scene->isClothSimulation() && type == 1)
+    {
+        type = 0;
+        warningLogWindow = true;
+        warningMessage = "XPBD mode can only be applied in cloth simulation.";
+    }
+
+    if (dampType == 3 && type != 1)
+    {
+        dampType = 0;
+        warningLogWindow = true;
+        warningMessage = "Extended damping can only be applied in XPBD mode.";
+    }
+
+    if (warningLogWindow)
+    {
+        ImGui::Begin("Warning");
+
+        ImGui::Text(warningMessage.c_str());
+
+        if (ImGui::Button("Close"))
+        {
+            warningLogWindow = false;
+            warningMessage.clear();
+        }
+        ImGui::End();
+    }
+
 }

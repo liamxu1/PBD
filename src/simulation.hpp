@@ -28,13 +28,7 @@ public:
     float timeStep = 0.03f;
     float gravity = 0.981f;
     float windSpeed = 1.5f;
-    float compliance = 1e-7;
-    float velocityDamping = 0.999f;
-    float stretchFactor = 0.999f;
-    float bendFactor = 0.3f;
     float dampFactor = 0.01f;
-    float poisonRatio = 0.3f;
-    float YongModulus = 20;
 
     bool wireframe = true;
     
@@ -43,7 +37,7 @@ public:
     /// 0: Normal PBD
     /// 1: XPBD
     /// </summary>
-    int type = 0;
+    int type = 1;
 
     /// <summary>
     /// dampType
@@ -68,6 +62,12 @@ private:
     float windOscillation = 0.0f;
 
     bool showStatus = SHOWALLINFO;
+
+    // for imGui render
+
+    bool adjustCoefficientWindow = false;
+    bool warningLogWindow = false;
+    string warningMessage;
 };
 
 #endif //POSITIONBASEDDYNAMICS_SIMULATION_HPP

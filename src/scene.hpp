@@ -55,6 +55,8 @@ public:
 
     Configuration* currentConfiguration;
 
+    bool isClothSimulation(int index = -1);
+
 private:
 
     // Scene configuration setup
