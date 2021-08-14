@@ -241,14 +241,19 @@ void Simulation::renderGUI() {
 
     int sceneNum = scene->sceneNum();
     char info[] = "Show Scene A";
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+    ImGui::BeginChild("Child", ImVec2(0, 150), true, window_flags);
     for (int i = 0; i < sceneNum; i++)
     {
+        const bool isSelected = (currentSceneIndex == i);
         info[11] = 'A' + i;
-        if (ImGui::Button(info))
+        if (ImGui::Selectable(info, isSelected))
         {
-            scene->setConfiguration(i);
+            currentSceneIndex = i;
         }
     }
+    scene->setConfiguration(currentSceneIndex);
+    ImGui::EndChild();
 
     ImGui::Checkbox("Edit coefficients", &adjustCoefficientWindow);
 

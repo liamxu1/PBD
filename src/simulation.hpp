@@ -37,7 +37,7 @@ public:
     /// 0: Normal PBD
     /// 1: XPBD
     /// </summary>
-    int type = 1;
+    int type = 0;
 
     /// <summary>
     /// dampType
@@ -68,6 +68,8 @@ private:
     bool adjustCoefficientWindow = false;
     bool warningLogWindow = false;
     string warningMessage;
+
+    int currentSceneIndex = INITIAL_SCENE_INDEX;
 };
 
 #endif //POSITIONBASEDDYNAMICS_SIMULATION_HPP

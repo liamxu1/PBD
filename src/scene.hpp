@@ -10,6 +10,8 @@
 #include <constraint.hpp>
 #include <mesh.hpp>
 
+const int INITIAL_SCENE_INDEX = 0;
+
 class Constraint;
 class CollisionConstraint;
 

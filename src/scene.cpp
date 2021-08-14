@@ -19,7 +19,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationD());
     configurations.push_back(setupConfigurationE());
     configurations.push_back(setupConfigurationF());
-    currentConfiguration = configurations[2];
+    currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
 Scene::~Scene() {
@@ -262,7 +262,6 @@ Configuration* Scene::setupConfigurationE()
 
     cube->isRigidBody = true;
     cube->gravityAffected = true;
-    cube->needCoef = true;
 
     configurationE->simulatedObjects.push_back(cube);
 
@@ -278,9 +277,7 @@ Configuration* Scene::setupConfigurationF()
     Configuration* configurationF = new Configuration();
     addPlaneToConfiguration(configurationF);
 
-    Vector3f colourA = { 0.6f,0.6f,0.f };
-    Vector3f colourB = { 0.f,0.6f,0.6f };
-    Vector3f colourC = { 0.6f,0.f,0.6f };
+    Vector3f colourA = { 0.0f,1.0f,0.f };
 
     TetrahedralMesh* cubeA = new TetrahedralMesh("Cube", "../resources/models/sceneF/cubeA.tet", colourA);
     cubeA->gravityAffected = true;
