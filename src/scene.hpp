@@ -10,7 +10,7 @@
 #include <constraint.hpp>
 #include <mesh.hpp>
 
-const int INITIAL_SCENE_INDEX = 0;
+const int INITIAL_SCENE_INDEX = 2;
 
 class Constraint;
 class CollisionConstraint;
@@ -68,6 +68,7 @@ private:
     Configuration* setupConfigurationD();
     Configuration* setupConfigurationE();
     Configuration* setupConfigurationF();
+    Configuration* setupConfigurationG();
     void addPlaneToConfiguration(Configuration* configuration);
     void setupEstimatePositionOffsets(Configuration* configuration);
 

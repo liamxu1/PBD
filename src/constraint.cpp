@@ -178,6 +178,8 @@ void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int index
         constraint->indices.push_back(indexB + mesh->estimatePositionsOffset);
     }
 
+    if (secondMesh)
+        constraint->relatedMesh = secondMesh;
     constraint->preCompute(configuration);
 
     configuration->constraints.push_back(constraint);
@@ -201,12 +203,12 @@ CollisionConstraint* buildStaticCollisionConstraint(Mesh* mesh, int index, Vecto
     return constraint;
 }
 
-CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC) {
-    CollisionConstraint* constraint = new TriangleCollisionConstraint(mesh, 1, normal, height);
+CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC, Mesh* secondMesh) {
+    CollisionConstraint* constraint = new TriangleCollisionConstraint(mesh, 4, normal, height);
     constraint->indices.push_back(vertexIndex + mesh->estimatePositionsOffset);
-    constraint->indices.push_back(indexA + mesh->estimatePositionsOffset);
-    constraint->indices.push_back(indexB + mesh->estimatePositionsOffset);
-    constraint->indices.push_back(indexC + mesh->estimatePositionsOffset);
+    constraint->indices.push_back(indexA + secondMesh->estimatePositionsOffset);
+    constraint->indices.push_back(indexB + secondMesh->estimatePositionsOffset);
+    constraint->indices.push_back(indexC + secondMesh->estimatePositionsOffset);
 
     return constraint;
 }
@@ -370,34 +372,40 @@ void StaticCollisionConstraint::project(Configuration* configuration, Params par
 }
 
 void TriangleCollisionConstraint::project(Configuration* configuration, Params params) {
+    preCompute(configuration);
+
     Vector3f q = configuration->estimatePositions[indices[0]];
     Vector3f p1 = configuration->estimatePositions[indices[1]];
     Vector3f p2 = configuration->estimatePositions[indices[2]];
     Vector3f p3 = configuration->estimatePositions[indices[3]];
 
     // Check if constraint is already satisfied
-    Vector3f n = (p2 - p1).cross(p3 - p1);
-    n /= n.norm();
+    Vector3f q_ = q - p1, p2_ = p2 - p1, p3_ = p3 - p1;
+    Vector3f n = p2_.cross(p3_);
+    float normalLength = n.norm();
+    if (normalLength < EPSILONTHRESHOLD)
+        return;
 
-    normal = n;
+    normal = n / normalLength;
 
-    Vector3f qToP1 = q - p1;
-    qToP1.normalize();
+    Matrix3f cordMat = Matrix3f::Zero();
+    cordMat << p2_, p3_, normal;
+    Vector3f cord = cordMat.inverse() * q_;
 
-    if (qToP1.dot(n) - height >= 0.0f) return;
+    if (cord[0] < 0.f || cord[1] < 0.f || cord[0] + cord[1]>1.f) return;
 
-    if (showStatus) cout << "Triangle collision:\n";
+    float d = q_.dot(normal);
+    float c = d - height;
 
-    float a = (q - p1).dot(n) - height;
-    Vector3f b = n;
+    if (c > 0) return;
 
-    Vector3f displacement = a * b;
+    Vector3f dc_p2 = (p3_.cross(q_) + d * normal.cross(p3_)) / normalLength;
+    Vector3f dc_p3 = -(p2_.cross(q_) + d * normal.cross(p2_)) / normalLength;
+    Vector3f dc_p1 = -dc_p2 - dc_p3 - normal;
+    vector<Vector3f> partialDerivatives = { normal,dc_p1,dc_p2,dc_p3 };
 
-    Vector3f& vertex = configuration->estimatePositions[indices[0]];
-
-    if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-    vertex -= displacement;
-    if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
+    params.type = PBDType::normalPBD;
+    commonOnProject(configuration, params, c, partialDerivatives);
 }
 
 pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params, float PoisonRatio, float YoungModulus)

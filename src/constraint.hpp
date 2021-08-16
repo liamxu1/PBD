@@ -75,6 +75,7 @@ public:
     int cardinality;
     vector<int> indices;
     Mesh* mesh;
+    Mesh* relatedMesh = nullptr;
     vector<float> inverseMasses;
 
     ConstraintType type = ConstraintType::NoneType;
@@ -192,6 +193,6 @@ void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, i
 void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh);
 TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape, bool useMeshCoef = false);
 CollisionConstraint* buildStaticCollisionConstraint(Mesh* mesh, int index, Vector3f normal, Vector3f position);
-CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC);
+CollisionConstraint* buildTriangleCollisionConstraint(Mesh* mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC, Mesh* secondMesh);
 
 #endif //POSITIONBASEDDYNAMICS_CONSTRAINT_HPP
