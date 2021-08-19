@@ -74,7 +74,8 @@ struct SimpleTetrahedron{
 enum class MeshType
 {
     triangular,
-    tetrahedral
+    tetrahedral,
+    singlePoint
 };
 
 class Mesh {
@@ -182,4 +183,11 @@ private:
     void insertTriangle(SimpleTriangle& triangle);
 };
 
+// For fixed point controlling
+class SinglePointMesh : public Mesh
+{
+public:
+    SinglePointMesh(const char* name, Vector3f position);
+    ~SinglePointMesh() {}
+};
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP

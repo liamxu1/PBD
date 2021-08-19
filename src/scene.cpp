@@ -20,6 +20,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationE());
     configurations.push_back(setupConfigurationF());
     configurations.push_back(setupConfigurationG());
+    configurations.push_back(setupConfigurationH());
     currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
@@ -318,6 +319,40 @@ Configuration* Scene::setupConfigurationG()
     buildTetrahedralConstraints(configurationG, cubeB);
 
     return configurationG;
+}
+
+Configuration* Scene::setupConfigurationH()
+{
+    Configuration* configurationH = new Configuration();
+    addPlaneToConfiguration(configurationH);
+
+    Vector3f colour = { 0.0f,1.0f,0.f };
+
+    TetrahedralMesh* cube = new TetrahedralMesh("Cube", "../resources/models/sceneH/cube.tet", colour);
+    cube->gravityAffected = true;
+    cube->needCoef = true;
+
+    vector<Vector3f> fixedPoints = { Vector3f(0,0,0),Vector3f(0,0,3) ,Vector3f(0,3,0) ,Vector3f(0,3,3) ,Vector3f(3,0,0) ,Vector3f(3,0,3) ,Vector3f(3,3,0) ,Vector3f(3,3,3) };
+    size_t numFixedPoints = fixedPoints.size();
+    vector<SinglePointMesh*> vertices(numFixedPoints, nullptr);
+    for (size_t i = 0; i < numFixedPoints; i++)
+    {
+        vertices[i] = new SinglePointMesh("", fixedPoints[i]);
+    }
+
+    configurationH->simulatedObjects.push_back(cube);
+    for (auto vertex : vertices)
+    {
+        configurationH->simulatedObjects.push_back(vertex);
+    }
+
+    setupEstimatePositionOffsets(configurationH);
+
+    buildTetrahedralConstraints(configurationH, cube);
+
+    buildTwoWayCouplingConstraints(configurationH, cube);
+
+    return configurationH;
 }
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {
