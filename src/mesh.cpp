@@ -398,13 +398,13 @@ TetrahedralMesh::TetrahedralMesh(const char* name, string filename, Vector3f col
     reset();
     this->inverseMass.resize((size_t)numVertices, inverseMass);
 
-    backupCoefData = { poisonRatio,YongModulus };
+    backupCoefData = { poisonRatio,YoungModulus };
 }
 
 void TetrahedralMesh::updateCoefs()
 {
     poisonRatio = backupCoefData[0];
-    YongModulus = backupCoefData[1];
+    YoungModulus = backupCoefData[1];
 }
 
 void TetrahedralMesh::parseTetFile(string filename)

@@ -506,7 +506,7 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
     // deformation gradient
     Matrix3f F = newShape * inversedOriginalShape;
 
-    float PoisonRatio = dynamic_cast<TetrahedralMesh*>(mesh)->poisonRatio, YoungModulus = dynamic_cast<TetrahedralMesh*>(mesh)->YongModulus;
+    float PoisonRatio = dynamic_cast<TetrahedralMesh*>(mesh)->poisonRatio, YoungModulus = dynamic_cast<TetrahedralMesh*>(mesh)->YoungModulus;
 
     auto temp = calculateStressTensorAndStressEnergyDensity(F, params, PoisonRatio, YoungModulus);
 

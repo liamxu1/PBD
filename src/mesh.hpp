@@ -167,7 +167,7 @@ public:
     int numBodies;
 
     float poisonRatio = 0.3f;
-    float YongModulus = 20;
+    float YoungModulus = 20;
 
 private:
 
