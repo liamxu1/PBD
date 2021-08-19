@@ -413,31 +413,70 @@ pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Pa
     float nu = PoisonRatio, k = YoungModulus;
     // lame coefficients
     float mu = k / (2.f * (1.f + nu)), lambda = k * nu / ((1.f + nu) * (1.f - 2.f * nu));
-
-    Matrix3f P = Matrix3f::Zero();
     float phi = 0.f;
+
+    JacobiSVD<MatrixXf> svd(F, ComputeFullU | ComputeFullV);
+    Matrix3f U = svd.matrixU();
+    Matrix3f V = svd.matrixV();
+    Vector3f F_ = svd.singularValues();
+    
+    if (F.determinant() < 0)
+    {
+        F_[2] = -F_[2];
+        assert(U.determinant() * V.determinant() < 0);
+        if (U.determinant() > 0)
+        {
+            V(0, 2) = -V(0, 2);
+            V(1, 2) = -V(1, 2);
+            V(2, 2) = -V(2, 2);
+        }
+        else
+        {
+            U(0, 2) = -U(0, 2);
+            U(1, 2) = -U(1, 2);
+            U(2, 2) = -U(2, 2);
+        }
+    }
+    
+    Vector3f P = Vector3f::Zero();
 
     switch (params.modelType)
     {
     case ConstitutiveMaterialModel::StVKModel:
     {
-        float e = F.trace();
-        Matrix3f epsilon = (F.transpose() * F - Matrix3f::Identity()) / 2;
-        Matrix3f S = 2 * mu * epsilon + lambda * e * Matrix3f::Identity();
-        P = F * S;
-        phi = 0.5 * (epsilon.transpose() * S).trace();
+        Vector3f epsilon = Vector3f::Zero();
+        float e = 0;
+        for (size_t i = 0; i < 3; i++)
+        {
+            epsilon[i] = (powf(F_[i], 2) - 1) / 2;
+            e += epsilon[i];
+            if (F_[i] < 0.58) {
+                F_[i] = 0.58;
+                epsilon[i] = (powf(F_[i], 2) - 1) / 2;
+            }
+        }
+        for (size_t i = 0; i < 3; i++)
+        {
+            float s = 2 * mu * epsilon[i] + lambda * e;
+            P[i] = s * F_[i];
+            phi += 0.5 * epsilon[i] * s;
+        }
         break;
     }
 
     case ConstitutiveMaterialModel::NeoHookeanModel:
     {
-        Matrix3f FT = F.transpose();
-        Matrix3f FTF = FT * F;
-        float I1 = FTF.trace(), I3 = FTF.determinant();
+        float I1 = F_.squaredNorm(), I3 = powf(F_[0] * F_[1] * F_[2], 2);
         assert(fabs(I3) > EPSILONTHRESHOLD);
-        Matrix3f FT_ = FT.inverse();
 
-        P = mu * F - mu * FT_ + lambda * logf(I3) * 0.5f * FT_;
+        for (size_t i = 0; i < 3; i++)
+        {
+            if (F_[i] < 0.5) {
+                F_[i] = 0.5;
+            }
+            P[i] = mu * F_[i] - mu / F_[i] + lambda * logf(I3) * 0.5f / F_[i];
+        }
+
         phi = mu / 2 * (I1 - logf(I3) - 3) + lambda / 8 * powf(logf(I3), 2);
         break;
     }
@@ -450,7 +489,7 @@ pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Pa
 
     }
 
-    return pair<Matrix3f, float>(P, phi);
+    return pair<Matrix3f, float>(U * P.asDiagonal() * V.transpose(), phi);
 }
 
 void TetrahedralConstraint::project(Configuration* configuration, Params params)
@@ -488,5 +527,5 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
     }
 
     commonOnProject(configuration, params, energy, partialDerivatives);
-
+    
 }

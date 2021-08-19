@@ -300,7 +300,6 @@ Configuration* Scene::setupConfigurationG()
 
     Vector3f colourA = { 0.0f,1.0f,0.0f };
     Vector3f colourB = { 1.0f,0.0f,0.0f };
-    Vector3f colourC = { 0.0f,0.0f,1.0f };
 
     TetrahedralMesh* cubeA = new TetrahedralMesh("CubeA", "../resources/models/sceneG/cubeA.tet", colourA);
     cubeA->gravityAffected = true;
@@ -309,20 +308,14 @@ Configuration* Scene::setupConfigurationG()
     TetrahedralMesh* cubeB = new TetrahedralMesh("CubeB", "../resources/models/sceneG/cubeB.tet", colourB);
     cubeB->gravityAffected = true;
     cubeB->needCoef = true;
-
-    TetrahedralMesh* cubeC = new TetrahedralMesh("CubeC", "../resources/models/sceneG/cubeC.tet", colourC);
-    cubeC->gravityAffected = true;
-    cubeC->needCoef = true;
     
     configurationG->simulatedObjects.push_back(cubeA);
     configurationG->simulatedObjects.push_back(cubeB);
-    configurationG->simulatedObjects.push_back(cubeC);
 
     setupEstimatePositionOffsets(configurationG);
 
     buildTetrahedralConstraints(configurationG, cubeA);
     buildTetrahedralConstraints(configurationG, cubeB);
-    buildTetrahedralConstraints(configurationG, cubeC);
 
     return configurationG;
 }
