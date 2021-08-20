@@ -320,7 +320,7 @@ void Simulation::renderGUI() {
             else if (type == 0 && mesh->meshType == MeshType::tetrahedral)
             {
                 ImGui::Text("Poison's Ratio");
-                ImGui::SliderFloat((string("##PoisonRatio") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.001f, 0.5f);
+                ImGui::SliderFloat((string("##PoisonRatio") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.001f, 0.499f);
 
                 ImGui::Text("Young's Modulus");
                 ImGui::SliderFloat((string("##YoungModulus") + mesh->meshName).c_str(), &(mesh->backupCoefData[1]), 1.0f, 100.f);
