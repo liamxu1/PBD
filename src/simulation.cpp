@@ -153,20 +153,26 @@ void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh
     int triangleIndex;
 
     // Dynamic object collision
-    for (Mesh* dynamicMesh : configuration->simulatedObjects)
+    if (mesh->dynamicCollisionTest)
     {
-        bool meshCollision = dynamicMesh->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
+        for (Mesh* dynamicMesh : configuration->simulatedObjects)
+        {
+            if (dynamicMesh == mesh && !mesh->selfCollisionTest) continue;
+            if (!dynamicMesh->dynamicCollisionTest) continue;
 
-        t = fabs(t);
+            bool meshCollision = dynamicMesh->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
 
-        if (meshCollision && 0 < t && t * 0.5 <= COLLISION_THRESHOLD) {
-            SimpleTriangle triangle = dynamicMesh->triangles[triangleIndex];
+            t = fabs(t);
 
-            if ((dynamicMesh->vertices[triangle.v[0].p] - mesh->vertices[index]).dot(normal) > 0.0f) {
-                configuration->collisionConstraints.push_back(buildTriangleCollisionConstraint(mesh, index, normal, COLLISION_THRESHOLD, triangle.v[0].p, triangle.v[1].p, triangle.v[2].p, dynamicMesh));
-            }
-            else {
-                configuration->collisionConstraints.push_back(buildTriangleCollisionConstraint(mesh, index, normal, COLLISION_THRESHOLD, triangle.v[0].p, triangle.v[2].p, triangle.v[1].p, dynamicMesh));
+            if (meshCollision && 0 < t && t * 0.5 <= COLLISION_THRESHOLD) {
+                SimpleTriangle triangle = dynamicMesh->triangles[triangleIndex];
+
+                if ((dynamicMesh->vertices[triangle.v[0].p] - mesh->vertices[index]).dot(normal) > 0.0f) {
+                    configuration->collisionConstraints.push_back(buildTriangleCollisionConstraint(mesh, index, normal, COLLISION_THRESHOLD, triangle.v[0].p, triangle.v[1].p, triangle.v[2].p, dynamicMesh));
+                }
+                else {
+                    configuration->collisionConstraints.push_back(buildTriangleCollisionConstraint(mesh, index, normal, COLLISION_THRESHOLD, triangle.v[0].p, triangle.v[2].p, triangle.v[1].p, dynamicMesh));
+                }
             }
         }
     }

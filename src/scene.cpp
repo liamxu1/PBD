@@ -215,6 +215,7 @@ Configuration* Scene::setupConfigurationC() {
     Vector3f solidColour = { 1.0f, 1.0f, 1.0f };
     TriangularMesh* attachPoints = new TriangularMesh("", "../resources/models/sceneC/attachPoints.obj", solidColour, 0.0f);
     attachPoints->isRigidBody = true;
+    attachPoints->dynamicCollisionTest = false;
 
     Vector3f clothColour = { 0.8f, 0.4f, 0.1f };
     TriangularMesh* cloth = new TriangularMesh("Cloth", "../resources/models/sceneC/cloth.obj", clothColour);
@@ -377,6 +378,7 @@ Configuration* Scene::setupConfigurationH()
 
     for (auto vertex : vertices)
     {
+        vertex->dynamicCollisionTest = false;
         configurationH->simulatedObjects.push_back(vertex);
     }
     configurationH->simulatedObjects.push_back(cube);

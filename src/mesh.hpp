@@ -115,6 +115,8 @@ public:
     MeshType meshType;
     bool needCoef = false;
 
+    bool selfCollisionTest = false;
+    bool dynamicCollisionTest = true;
     vector<float> backupCoefData;
 
 protected:
