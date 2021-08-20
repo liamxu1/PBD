@@ -57,22 +57,22 @@ void keyCallback(GLFWwindow *win, int key, int scancode, int action, int mods) {
         switch (key)
         {
         case GLFW_KEY_LEFT:
-            simulation->scene->translateInteraction(Vector3f(-0.3f, 0.0f, 0.0f));
+            simulation->scene->translateInteraction(Vector3f(-0.3f, 0.0f, 0.0f), 0);
             break;
         case GLFW_KEY_RIGHT:
-            simulation->scene->translateInteraction(Vector3f(0.3f, 0.0f, 0.0f));
-            break;
-        case GLFW_KEY_UP:
-            simulation->scene->translateInteraction(Vector3f(0.0f, 0.0f, 0.3f));
-            break;
-        case GLFW_KEY_DOWN:
-            simulation->scene->translateInteraction(Vector3f(0.0f, 0.0f, -0.3f));
+            simulation->scene->translateInteraction(Vector3f(0.3f, 0.0f, 0.0f), 0);
             break;
         case GLFW_KEY_COMMA:
-            simulation->scene->translateInteraction(Vector3f(0.0f, 0.3f, 0.0f));
+            simulation->scene->translateInteraction(Vector3f(0.0f, 0.0f, 0.3f), 2);
             break;
         case GLFW_KEY_PERIOD:
-            simulation->scene->translateInteraction(Vector3f(0.0f, -0.3f, 0.0f));
+            simulation->scene->translateInteraction(Vector3f(0.0f, 0.0f, -0.3f), 2);
+            break;
+        case GLFW_KEY_UP:
+            simulation->scene->translateInteraction(Vector3f(0.0f, 0.3f, 0.0f), 1);
+            break;
+        case GLFW_KEY_DOWN:
+            simulation->scene->translateInteraction(Vector3f(0.0f, -0.3f, 0.0f), 1);
             break;
         case GLFW_KEY_W:
             simulation->scene->translation(2) += 0.3f;

@@ -483,11 +483,15 @@ void TetrahedralMesh::insertTriangle(SimpleTriangle& triangle)
     triangles.push_back(triangle);
 }
 
-SinglePointMesh::SinglePointMesh(const char* name, Vector3f position) : Mesh(name, MeshType::singlePoint)
+SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, size_t pos) : Mesh(name, MeshType::singlePoint)
 {
     this->numVertices = 1;
     this->numFaces = 0;
     this->initialVertices.push_back(position);
     this->inverseMass.push_back(0.f);
     this->reset();
+
+    x = (pos / 4 == 1);
+    y = (pos / 2 % 2 == 1);
+    z = (pos % 2 == 1);
 }

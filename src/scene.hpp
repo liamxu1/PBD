@@ -42,7 +42,9 @@ public:
 
     void reset();
     void setConfiguration(int index);
-    void translateInteraction(Vector3f translate);
+
+    // axis: 0-x, 1-y, 2-z
+    void translateInteraction(Vector3f translate, size_t axis = 0);
     void render(bool wireframe);
 
     int sceneNum();

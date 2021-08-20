@@ -47,11 +47,46 @@ void Scene::setConfiguration(int index) {
     currentConfiguration = configurations[index];
 }
 
-void Scene::translateInteraction(Vector3f translate) {
+void Scene::translateInteraction(Vector3f translate, size_t axis) {
 
     // Translate the attachment points in scene 3
     if (currentConfiguration == configurations[2]) {
         currentConfiguration->simulatedObjects[0]->translate(translate);
+    }
+
+    // Translate the controlling points in scene 8
+    else if (currentConfiguration == configurations[7])
+    {
+        for (size_t i = 0; i < 8; i++)
+        {
+            auto mesh = currentConfiguration->simulatedObjects[i];
+            assert(mesh->meshType == MeshType::singlePoint);
+            bool direction = true;
+            switch (axis)
+            {
+            case 0:
+                direction = dynamic_cast<SinglePointMesh*>(mesh)->x;
+                break;
+            case 1:
+                direction = dynamic_cast<SinglePointMesh*>(mesh)->y;
+                break;
+            case 2:
+                direction = dynamic_cast<SinglePointMesh*>(mesh)->z;
+                break;
+            default:
+                cout << "Error: wrong axis used in function Scene::translateInteraction()\n\n";
+                break;
+            }
+
+            if (direction)
+            {
+                mesh->vertices[0] += translate;
+            }
+            else
+            {
+                mesh->vertices[0] -= translate;
+            }
+        }
     }
 }
 
@@ -337,14 +372,14 @@ Configuration* Scene::setupConfigurationH()
     vector<SinglePointMesh*> vertices(numFixedPoints, nullptr);
     for (size_t i = 0; i < numFixedPoints; i++)
     {
-        vertices[i] = new SinglePointMesh("", fixedPoints[i]);
+        vertices[i] = new SinglePointMesh("", fixedPoints[i], i);
     }
 
-    configurationH->simulatedObjects.push_back(cube);
     for (auto vertex : vertices)
     {
         configurationH->simulatedObjects.push_back(vertex);
     }
+    configurationH->simulatedObjects.push_back(cube);
 
     setupEstimatePositionOffsets(configurationH);
 

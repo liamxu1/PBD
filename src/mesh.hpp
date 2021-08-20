@@ -187,7 +187,10 @@ private:
 class SinglePointMesh : public Mesh
 {
 public:
-    SinglePointMesh(const char* name, Vector3f position);
+    SinglePointMesh(const char* name, Vector3f position, size_t pos = 0);
     ~SinglePointMesh() {}
+
+    // indicate whether the outward direction is the same with positive direction in three axes
+    bool x = false, y = false, z = false;
 };
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP
