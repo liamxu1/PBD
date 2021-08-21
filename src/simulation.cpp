@@ -104,6 +104,18 @@ void Simulation::simulate(Configuration *configuration) {
     params.timeStep = timeStep;
     params.useXPBDDamp = (dampType == 3);
 
+    switch (constitutiveModelType)
+    {
+    case 0:
+        params.modelType = ConstitutiveMaterialModel::StVKModel;
+        break;
+    case 1:
+        params.modelType = ConstitutiveMaterialModel::NeoHookeanModel;
+        break;
+    default:
+        break;
+    }
+
     // Project constraints iteratively
     for (int iteration = 0; iteration < solverIterations; iteration++) {
         //#pragma omp parallel for // Improves performance but constraint solving order is not deterministic
@@ -304,6 +316,9 @@ void Simulation::renderGUI() {
 
     ImGui::Text("\nDampType");
     ImGui::Combo("##dampType", &dampType, "None\0Simple\0Rotate\0Extended(in XPBD only)\0\0");
+
+    ImGui::Text("ModelType");
+    ImGui::Combo("##modelType", &constitutiveModelType, "StVK model\0Neo Hookean model\0\0");
 
     ImGui::End();
 

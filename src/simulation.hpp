@@ -48,6 +48,13 @@ public:
     /// </summary>
     int dampType = 0;
 
+    /// <summary>
+    /// constitutiveModelType
+    /// 0: StVK model
+    /// 1: Neo Hookean model
+    /// </summary>
+    int constitutiveModelType = 0;
+
     // Scene
     Scene* scene;
 
