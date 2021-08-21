@@ -236,6 +236,19 @@ void Simulation::updateCollisionVelocities(CollisionConstraint* constraint) {
     // TODO Friction / restitution
 }
 
+void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 void Simulation::renderGUI() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -246,6 +259,8 @@ void Simulation::renderGUI() {
     ImGui::Begin("Simulator");
 
     ImGui::Text("Scene Selection");
+    ImGui::SameLine();
+    HelpMarker("In scene C and H, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to control the fixed points.");
 
     int sceneNum = scene->sceneNum();
     char info[] = "Show Scene A";
@@ -263,7 +278,8 @@ void Simulation::renderGUI() {
     scene->setConfiguration(currentSceneIndex);
     ImGui::EndChild();
 
-    ImGui::Checkbox("Edit coefficients", &adjustCoefficientWindow);
+    ImGui::Text("Edit coefficients"); ImGui::SameLine();
+    ImGui::Checkbox("##Editcoefficients", &adjustCoefficientWindow);
 
     ImGui::Text("Solver Iterations");
     ImGui::SliderInt("##solverIterations", &solverIterations, 1, 50, "%.0f");
@@ -325,6 +341,15 @@ void Simulation::renderGUI() {
                 ImGui::Text("Young's Modulus");
                 ImGui::SliderFloat((string("##YoungModulus") + mesh->meshName).c_str(), &(mesh->backupCoefData[1]), 1.0f, 100.f);
             }
+
+            ImGui::Text("Gravity"); ImGui::SameLine();
+            ImGui::Checkbox((string("##Gravity") + mesh->meshName).c_str(), &(mesh->gravityAffected));
+            ImGui::SameLine();
+            ImGui::Text("Self Collision"); ImGui::SameLine();
+            ImGui::Checkbox((string("##SelfCollision") + mesh->meshName).c_str(), &(mesh->selfCollisionTest));
+            ImGui::SameLine();
+            ImGui::Text("Dynamic Collision"); ImGui::SameLine();
+            ImGui::Checkbox((string("##DynamicCollision") + mesh->meshName).c_str(), &(mesh->dynamicCollisionTest));
         }
         ImGui::End();
     }
