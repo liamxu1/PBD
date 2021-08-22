@@ -21,6 +21,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationF());
     configurations.push_back(setupConfigurationG());
     configurations.push_back(setupConfigurationH());
+    configurations.push_back(setupConfigurationI());
     currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
@@ -57,7 +58,8 @@ void Scene::translateInteraction(Vector3f translate, size_t axis) {
     // Translate the controlling points in scene 8
     else if (currentConfiguration == configurations[7])
     {
-        for (size_t i = 0; i < 8; i++)
+        size_t n = currentConfiguration->simulatedObjects.size();
+        for (size_t i = 0; i < n - 1; i++)
         {
             auto mesh = currentConfiguration->simulatedObjects[i];
             assert(mesh->meshType == MeshType::singlePoint);
@@ -85,6 +87,29 @@ void Scene::translateInteraction(Vector3f translate, size_t axis) {
             else
             {
                 mesh->vertices[0] -= translate;
+            }
+        }
+    }
+
+    // Translate the controlling points in scene 9
+    else if (currentConfiguration == configurations[8])
+    {
+        if (axis == 0)
+        {
+            size_t n = currentConfiguration->simulatedObjects.size();
+            for (size_t i = 0; i < n - 1; i++)
+            {
+                auto mesh = currentConfiguration->simulatedObjects[i];
+                assert(mesh->meshType == MeshType::singlePoint);
+                bool direction = dynamic_cast<SinglePointMesh*>(mesh)->x;
+                if (direction)
+                {
+                    mesh->vertices[0] += translate;
+                }
+                else
+                {
+                    mesh->vertices[0] -= translate;
+                }
             }
         }
     }
@@ -360,7 +385,6 @@ Configuration* Scene::setupConfigurationG()
 Configuration* Scene::setupConfigurationH()
 {
     Configuration* configurationH = new Configuration();
-    addPlaneToConfiguration(configurationH);
 
     Vector3f colour = { 0.0f,1.0f,0.f };
 
@@ -390,6 +414,43 @@ Configuration* Scene::setupConfigurationH()
     buildTwoWayCouplingConstraints(configurationH, cube);
 
     return configurationH;
+}
+
+Configuration* Scene::setupConfigurationI()
+{
+    Configuration* configurationI = new Configuration();
+
+    Vector3f colour = { 0.0f,1.0f,0.f };
+
+    TetrahedralMesh* cuboid = new TetrahedralMesh("Cuboid", "../resources/models/sceneI/cube.tet", colour);
+    cuboid->gravityAffected = false;
+    cuboid->needCoef = true;
+    
+    for (auto &pos : cuboid->vertices)
+    {
+        if (fabs(pos[0]) < 1e-5)
+        {
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, 4);
+            vertex->dynamicCollisionTest = false;
+            configurationI->simulatedObjects.push_back(vertex);
+        }
+        else if (fabs(pos[0] - 5.f) < 1e-5)
+        {
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, 0);
+            vertex->dynamicCollisionTest = false;
+            configurationI->simulatedObjects.push_back(vertex);
+        }
+    }
+
+    configurationI->simulatedObjects.push_back(cuboid);
+
+    setupEstimatePositionOffsets(configurationI);
+
+    buildTetrahedralConstraints(configurationI, cuboid);
+
+    buildTwoWayCouplingConstraints(configurationI, cuboid);
+
+    return configurationI;
 }
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {

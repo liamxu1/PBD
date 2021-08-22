@@ -272,7 +272,7 @@ void Simulation::renderGUI() {
 
     ImGui::Text("Scene Selection");
     ImGui::SameLine();
-    HelpMarker("In scene C and H, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to control the fixed points.");
+    HelpMarker("In scenes C, H and I, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to control the fixed points.");
 
     int sceneNum = scene->sceneNum();
     char info[] = "Show Scene A";
