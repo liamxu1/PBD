@@ -82,8 +82,11 @@ void Simulation::simulate(Configuration *configuration) {
 
     // Generate collision constraints
     for (Mesh* mesh : configuration->simulatedObjects) {
-        for (int i = 0; i < mesh->numVertices; i++) {
-            generateCollisionConstraints(configuration, mesh, i);
+        if (mesh->isLineBased())
+        {
+            for (int i = 0; i < mesh->numVertices; i++) {
+                generateCollisionConstraints(configuration, dynamic_cast<LineBasedMesh*>(mesh), i);
+            }
         }
     }
 
@@ -151,7 +154,7 @@ void Simulation::simulate(Configuration *configuration) {
     */
 }
 
-void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh *mesh, int index) {
+void Simulation::generateCollisionConstraints(Configuration* configuration, LineBasedMesh *mesh, int index) {
 
     // Setup ray
     Vector3f rayOrigin = mesh->vertices[index];
@@ -169,15 +172,17 @@ void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh
     {
         for (Mesh* dynamicMesh : configuration->simulatedObjects)
         {
+            if (!dynamicMesh->isLineBased()) continue;
+            auto dynamicMesh_ = dynamic_cast<LineBasedMesh*>(dynamicMesh);
             if (dynamicMesh == mesh && !mesh->selfCollisionTest) continue;
             if (!dynamicMesh->dynamicCollisionTest) continue;
 
-            bool meshCollision = dynamicMesh->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
+            bool meshCollision = dynamicMesh_->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
 
             t = fabs(t);
 
             if (meshCollision && 0 < t && t * 0.5 <= COLLISION_THRESHOLD) {
-                SimpleTriangle triangle = dynamicMesh->triangles[triangleIndex];
+                SimpleTriangle triangle = dynamicMesh_->triangles[triangleIndex];
 
                 if ((dynamicMesh->vertices[triangle.v[0].p] - mesh->vertices[index]).dot(normal) > 0.0f) {
                     configuration->collisionConstraints.push_back(buildTriangleCollisionConstraint(mesh, index, normal, COLLISION_THRESHOLD, triangle.v[0].p, triangle.v[1].p, triangle.v[2].p, dynamicMesh));
@@ -191,9 +196,9 @@ void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh
 
     // Static mesh collision
     for (Mesh* staticMesh : configuration->staticObjects) {
-        if (!staticMesh->isRigidBody) continue;
+        if (!staticMesh->isRigidBody || !staticMesh->isLineBased()) continue;
 
-        bool meshCollision = staticMesh->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
+        bool meshCollision = dynamic_cast<LineBasedMesh*>(staticMesh)->intersect(rayOrigin, rayDirection, t, normal, index + mesh->estimatePositionsOffset, triangleIndex);
 
         // If a collision occured
         if (meshCollision && fabs(t) * 0.5f <= (vertexToEstimate).norm() + COLLISION_THRESHOLD) {

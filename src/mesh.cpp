@@ -25,7 +25,7 @@ Matrix3f CrossMat(Vector3f vec)
 }
 
 TriangularMesh::TriangularMesh(const char* name, string filename, Vector3f colour, float inverseMass)
-    :Mesh(name, MeshType::triangular)
+    :LineBasedMesh(name, MeshType::triangular)
 {
 
     this->colour = colour;
@@ -56,10 +56,7 @@ void TriangularMesh::updateCoefs()
     dampCompliance = backupCoefData[4];
 }
 
-Mesh::~Mesh() {
-}
-
-void Mesh::generateSurfaceNormals() {
+void LineBasedMesh::generateSurfaceNormals() {
     surfaceNormals.clear();
     for (int i = 0; i < numFaces; i++) {
         Vector3f v1 = vertices[triangles[i].v[1].p] - vertices[triangles[i].v[0].p];
@@ -89,7 +86,7 @@ void Mesh::translate(Vector3f translate) {
     }
 }
 
-bool Mesh::intersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, Vector3f &normal, int vertexIndex, int &triHitIndex) {
+bool LineBasedMesh::intersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, Vector3f &normal, int vertexIndex, int &triHitIndex) {
 
     // Ensure the ray intersects the bounding box before testing each triangle
 
@@ -120,7 +117,7 @@ bool Mesh::intersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, Vector
     return hit;
 }
 
-bool Mesh::rayTriangleIntersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, int triangleIndex, int vertexIndex) {
+bool LineBasedMesh::rayTriangleIntersect(Vector3f rayOrigin, Vector3f rayDirection, float &t, int triangleIndex, int vertexIndex) {
     int i0 = triangles[triangleIndex].v[0].p;
     int i1 = triangles[triangleIndex].v[1].p;
     int i2 = triangles[triangleIndex].v[2].p;
@@ -155,7 +152,7 @@ bool Mesh::rayTriangleIntersect(Vector3f rayOrigin, Vector3f rayDirection, float
     return true;
 }
 
-void Mesh::render(Camera* camera, Matrix4f transform) {
+void LineBasedMesh::render(Camera* camera, Matrix4f transform) {
 
     // Setup transform
     Affine3f t(Translation3f(position[0], position[1], position[2]));
@@ -380,7 +377,7 @@ void TriangularMesh::parseObjFile(string filename) {
 }
 
 TetrahedralMesh::TetrahedralMesh(const char* name, string filename, Vector3f colour, float inverseMass)
-    : Mesh(name, MeshType::tetrahedral)
+    : LineBasedMesh(name, MeshType::tetrahedral)
 {
     this->colour = colour;
     parseTetFile(filename);
@@ -483,7 +480,7 @@ void TetrahedralMesh::insertTriangle(SimpleTriangle& triangle)
     triangles.push_back(triangle);
 }
 
-SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, size_t pos) : Mesh(name, MeshType::singlePoint)
+SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, size_t pos) : LineBasedMesh(name, MeshType::singlePoint)
 {
     this->numVertices = 1;
     this->numFaces = 0;
