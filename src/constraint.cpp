@@ -14,58 +14,32 @@ void Constraint::preCompute(Configuration* configuration) {
 
 void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float>& coeffs)
 {
-    float wSum = 0;
-    for (int i = 0; i < cardinality; i++)
-    {
-        wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
-    }
-    
-    if (wSum < EPSILONTHRESHOLD) return;
-
-    if (showStatus) cout << typeNameString.at(type) << ":\n";
     switch (params.type)
     {
     case PBDType::normalPBD:
     {
-        assert(coeffs.size() == 1);
-        float k = coeffs[0];
-        float s = C / wSum;
-        float kNew = 1.0f - pow(1.0f - k, 1.0f / params.solverIterations);
-        for (int i = 0; i < cardinality; i++)
+        if (coeffs.size() == 0)
         {
-            Vector3f& vertex = configuration->estimatePositions[indices[i]];
-
-            if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-            vertex -= kNew * s * inverseMasses[i] * partialDerivatives[i];
-            if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+            commonOnProjectNormal(configuration, params.solverIterations, C, partialDerivatives);
         }
-        if (showStatus) cout << '\n';
+        else
+        {
+            assert(coeffs.size() == 1);
+            commonOnProjectNormal(configuration, params.solverIterations, C, partialDerivatives, coeffs[0]);
+        }
         break;
     }
 
     case PBDType::XPBD:
     {
-        assert(coeffs.size() == 2);
-        float compliance = coeffs[0], dampFactor = coeffs[1];
-        vector<float> dlambda(cardinality, 0.f);
-        float alpha = compliance / powf(params.timeStep, 2);
-        float gamma = alpha * dampFactor * params.timeStep;
-        for (int i = 0; i < cardinality; i++)
-        {
-            dlambda[i] = (-C - alpha * configuration->lambda[indices[i]]
-                - gamma * partialDerivatives[i].dot(configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]]))
-                / ((1 + gamma) * wSum + alpha);
+        if (coeffs.size() == 0) {
+            commonOnProjectExtended(configuration, params.timeStep, C, partialDerivatives);
         }
-        for (int i = 0; i < cardinality; i++)
+        else
         {
-            configuration->lambda[indices[i]] += dlambda[i];
-            Vector3f& vertex = configuration->estimatePositions[indices[i]];
-
-            if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-            vertex += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
-            if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+            assert(coeffs.size() == 2);
+            commonOnProjectExtended(configuration, params.timeStep, C, partialDerivatives, coeffs[0], coeffs[1]);
         }
-        if (showStatus) cout << '\n';
         break;
     }
 
@@ -77,6 +51,62 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
     }
 
     }
+}
+
+void Constraint::commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor)
+{
+    if (showStatus) cout << typeNameString.at(type) << ":\n";
+    float wSum = 0;
+    for (int i = 0; i < cardinality; i++)
+    {
+        wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
+    }
+
+    if (wSum < EPSILONTHRESHOLD) return;
+
+    float s = C / wSum;
+    float kNew = 1.0f - pow(1.0f - factor, 1.0f / iteration);
+    for (int i = 0; i < cardinality; i++)
+    {
+        Vector3f& vertex = configuration->estimatePositions[indices[i]];
+
+        if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+        vertex -= kNew * s * inverseMasses[i] * partialDerivatives[i];
+        if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+    }
+    if (showStatus) cout << '\n';
+}
+
+void Constraint::commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance, float dampCompliance)
+{
+    if (showStatus) cout << typeNameString.at(type) << ":\n";
+    float wSum = 0;
+    for (int i = 0; i < cardinality; i++)
+    {
+        wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
+    }
+
+    if (wSum < EPSILONTHRESHOLD) return;
+
+    vector<float> dlambda(cardinality, 0.f);
+    float alpha = compliance / powf(timeStep, 2);
+    float gamma = alpha * dampCompliance * timeStep;
+    for (int i = 0; i < cardinality; i++)
+    {
+        dlambda[i] = (-C - alpha * configuration->lambda[indices[i]]
+            - gamma * partialDerivatives[i].dot(configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]]))
+            / ((1 + gamma) * wSum + alpha);
+    }
+    for (int i = 0; i < cardinality; i++)
+    {
+        configuration->lambda[indices[i]] += dlambda[i];
+        Vector3f& vertex = configuration->estimatePositions[indices[i]];
+
+        if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+        vertex += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
+        if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+    }
+    if (showStatus) cout << '\n';
 }
 
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
@@ -278,19 +308,28 @@ void DistanceConstraint::project(Configuration* configuration, Params params) {
     {
         if (params.type == PBDType::normalPBD)
         {
-            float k = useMeshCoef ? dynamic_cast<TriangularMesh*>(mesh)->stretchFactor : 1.0f;
-            coeffs.push_back(k);
+            if (useMeshCoef)
+                commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchFactor);
+            else
+                commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
         }
         else if (params.type == PBDType::XPBD)
         {
-            coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance);
-            if (params.useXPBDDamp)
-                coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
-            else coeffs.push_back(0.f);
+            if (useMeshCoef)
+            {
+                if (params.useXPBDDamp)
+                    commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance, dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
+                else
+                    commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance);
+            }
+            else
+            {
+                commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives);
+            }
         }
     }
-    else coeffs.push_back(1.0);
-    commonOnProject(configuration, params, a, partialDerivatives, coeffs);
+    else
+        commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
 }
 
 void BendConstraint::project(Configuration* configuration, Params params) {
@@ -333,18 +372,28 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     {
         if (params.type == PBDType::normalPBD)
         {
-            coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->bendFactor);
+            if (useMeshCoef)
+                commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendFactor);
+            else
+                commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives);
         }
         else if (params.type == PBDType::XPBD)
         {
-            coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->bendCompliance);
-            if (params.useXPBDDamp)
-                coeffs.push_back(dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
-            else coeffs.push_back(0.f);
+            if (useMeshCoef)
+            {
+                if (params.useXPBDDamp)
+                    commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendCompliance, dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
+                else
+                    commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendCompliance);
+            }
+            else
+            {
+                commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives);
+            }
         }
     }
-    else coeffs.push_back(1.0);
-    commonOnProject(configuration, params, acosf(d) - angle, partialDerivatives, coeffs);
+    else
+        commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives);
 
 }
 
@@ -404,8 +453,7 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     Vector3f dc_p1 = -dc_p2 - dc_p3 - normal;
     vector<Vector3f> partialDerivatives = { normal,dc_p1,dc_p2,dc_p3 };
 
-    params.type = PBDType::normalPBD;
-    commonOnProject(configuration, params, c, partialDerivatives);
+    commonOnProjectNormal(configuration, params.solverIterations, c, partialDerivatives);
 }
 
 pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params, float PoisonRatio, float YoungModulus)
@@ -526,6 +574,9 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
         partialDerivatives[3] -= partialDerivatives[i];
     }
 
-    commonOnProject(configuration, params, energy, partialDerivatives);
-    
+    if (params.type == PBDType::normalPBD)
+        commonOnProjectNormal(configuration, params.solverIterations, energy, partialDerivatives);
+    else if (params.type == PBDType::XPBD)
+        commonOnProjectExtended(configuration, params.timeStep, energy, partialDerivatives, 1e-9);
+
 }

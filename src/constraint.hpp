@@ -87,7 +87,9 @@ protected:
     // e.g.
     // In normal PBD condition, put in {k}
     // In XPBD condition, put in {compliance, damp factor}
-    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float> &coeffs = vector<float>({ 1 }));
+    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float> &coeffs = vector<float>());
+    void commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor = 1.f);
+    void commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance = 1e-7, float dampCompliance = 0.f);
 
     bool useMeshCoef;
 };

@@ -353,7 +353,7 @@ void Simulation::renderGUI() {
                 ImGui::Text("Damp Compliance * 10^(-5)");
                 ImGui::SliderFloat((string("##dampFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[4]), 0.001f, 1.0f);
             }
-            else if (type == 0 && mesh->meshType == MeshType::tetrahedral)
+            else if (mesh->meshType == MeshType::tetrahedral)
             {
                 ImGui::Text("Poison's Ratio");
                 ImGui::SliderFloat((string("##PoisonRatio") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.001f, 0.499f);
@@ -372,13 +372,6 @@ void Simulation::renderGUI() {
             ImGui::Checkbox((string("##DynamicCollision") + mesh->meshName).c_str(), &(mesh->dynamicCollisionTest));
         }
         ImGui::End();
-    }
-
-    if (!scene->isClothSimulation() && type == 1)
-    {
-        type = 0;
-        warningLogWindow = true;
-        warningMessage = "XPBD mode can only be applied in cloth simulation.";
     }
 
     if (dampType == 3 && type != 1)
