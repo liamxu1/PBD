@@ -480,15 +480,111 @@ void TetrahedralMesh::insertTriangle(SimpleTriangle& triangle)
     triangles.push_back(triangle);
 }
 
-SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, size_t pos) : LineBasedMesh(name, MeshType::singlePoint)
+SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, Vector3f colour, size_t pos) : PointBasedMesh(name, MeshType::singlePoint)
 {
+    this->colour = colour;
+
     this->numVertices = 1;
-    this->numFaces = 0;
     this->initialVertices.push_back(position);
     this->inverseMass.push_back(0.f);
     this->reset();
 
+    // Setup VBO
+    glGenBuffers(1, &positionVBO);
+
+    // Setup shader
+    shader = loadShaders("SimpleVertexShader", "SimpleFragmentShader");
+
     x = (pos / 4 == 1);
     y = (pos / 2 % 2 == 1);
     z = (pos % 2 == 1);
+}
+
+void PointBasedMesh::render(Camera* camera, Matrix4f transform)
+{
+    // Setup transform
+    Affine3f t(Translation3f(position[0], position[1], position[2]));
+    Matrix4f modelMatrix = transform * t.matrix();
+
+    glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vector3f), vertices[0].data(), GL_STATIC_DRAW);
+
+    glUseProgram(shader);
+
+    glUniform3fv(glGetUniformLocation(shader, "materialColour"), 1, colour.data());
+    Vector4f lightPosition = Vector4f(8, 10, 0, 0);
+    lightPosition = modelMatrix * lightPosition;
+    glUniform3fv(glGetUniformLocation(shader, "lightPosition"), 1, lightPosition.data());
+
+    // Bind matrices
+    glUniformMatrix4fv(glGetUniformLocation(3, "projection"), 1, GL_FALSE, camera->projectionMatrix.data());
+    glUniformMatrix4fv(glGetUniformLocation(3, "view"), 1, GL_FALSE, camera->viewMatrix.data());
+    glUniformMatrix4fv(glGetUniformLocation(3, "model"), 1, GL_FALSE, modelMatrix.data());
+
+    // Bind vertex positions
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+    glVertexAttribPointer(
+            0,         // shader layout attribute
+            3,         // size
+            GL_FLOAT,  // type
+            GL_FALSE,  // normalized?
+            0,         // stride
+            (void*)0   // array buffer offset
+    );
+
+    glDrawArrays(GL_POINTS, 0, vertices.size());
+    glDisableVertexAttribArray(0);
+}
+
+SPHMesh::SPHMesh(const char* name, string filename, Vector3f colour, float inverseMass)
+    : PointBasedMesh(name, MeshType::SPH)
+{
+    this->colour = colour;
+
+    parseSphFile(filename);
+    initialVertices = vertices;
+
+    // Setup VBO
+    glGenBuffers(1, &positionVBO);
+
+    // Setup shader
+    shader = loadShaders("SimpleVertexShader", "SimpleFragmentShader");
+
+    // Setup simulation
+    reset();
+    this->inverseMass.resize((size_t)numVertices, inverseMass);
+}
+
+void SPHMesh::parseSphFile(string filename)
+{
+    // Attempt to open an input stream to the file
+    ifstream sphFile(filename);
+    if (!sphFile.is_open()) {
+        cout << "Error reading " << filename << endl;
+        return;
+    }
+
+    string line;
+    getline(sphFile, line);
+    istringstream tetline(line);
+    tetline >> numVertices >> numCollidingParticles;
+
+    for (int i = 0; i < numVertices; i++)
+    {
+        Vector3f v;
+        getline(sphFile, line);
+        istringstream sphline(line);
+        sphline >> v[0] >> v[1] >> v[2];
+        vertices.push_back(v);
+    }
+    for (int i = 0; i < numCollidingParticles; i++)
+    {
+        pair<unsigned, float> temp;
+        getline(sphFile, line);
+        istringstream sphline(line);
+        sphline >> temp.first >> temp.second;
+        collidingInfos.push_back(temp);
+    }
+
 }

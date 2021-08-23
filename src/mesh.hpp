@@ -75,7 +75,8 @@ enum class MeshType
 {
     triangular,
     tetrahedral,
-    singlePoint
+    singlePoint,
+    SPH
 };
 
 class Mesh {
@@ -203,14 +204,44 @@ private:
     void insertTriangle(SimpleTriangle& triangle);
 };
 
-// For fixed point controlling
-class SinglePointMesh : public LineBasedMesh
+class PointBasedMesh : public Mesh
 {
 public:
-    SinglePointMesh(const char* name, Vector3f position, size_t pos = 0);
+    PointBasedMesh(const char* name, MeshType type) : Mesh(name, type) {}
+    virtual ~PointBasedMesh() = 0 {}
+
+    virtual void render(Camera* camera, Matrix4f transform);
+
+};
+
+// For fixed point controlling
+class SinglePointMesh : public PointBasedMesh
+{
+public:
+    SinglePointMesh(const char* name, Vector3f position, Vector3f colour, size_t pos = 0);
     ~SinglePointMesh() {}
 
     // indicate whether the outward direction is the same with positive direction in three axes
     bool x = false, y = false, z = false;
+};
+
+class SPHMesh : public PointBasedMesh
+{
+public:
+    SPHMesh(const char* name, string filename, Vector3f colour, float inverseMass = 1.0f);
+    ~SPHMesh(){}
+
+    int numCollidingParticles = -1;
+    vector<pair<unsigned, float>> collidingInfos;
+
+private:
+    // my .sph file format:
+    // First line: (total vertices number) (border vertices number)
+    // Next part: (vertices' positions)
+    // ----each line with 3 floats representing the position of one vertex
+    // Final part: (borders)
+    // ----each line with a int and a float representing the index and collision radius
+    void parseSphFile(string filename);
+
 };
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP
