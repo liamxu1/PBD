@@ -22,6 +22,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationG());
     configurations.push_back(setupConfigurationH());
     configurations.push_back(setupConfigurationI());
+    configurations.push_back(setupConfigurationJ());
     currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
@@ -133,6 +134,8 @@ void Scene::render(bool wireframe) {
     // Set draw mode
     if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glPointSize(3.0f);
 
     // Render configuration objects
     for (Mesh* mesh : currentConfiguration->staticObjects) {
@@ -397,7 +400,7 @@ Configuration* Scene::setupConfigurationH()
     vector<SinglePointMesh*> vertices(numFixedPoints, nullptr);
     for (size_t i = 0; i < numFixedPoints; i++)
     {
-        vertices[i] = new SinglePointMesh("", fixedPoints[i], i);
+        vertices[i] = new SinglePointMesh("", fixedPoints[i], colour, i);
     }
 
     for (auto vertex : vertices)
@@ -421,6 +424,7 @@ Configuration* Scene::setupConfigurationI()
     Configuration* configurationI = new Configuration();
 
     Vector3f colour = { 0.0f,1.0f,0.f };
+    Vector3f colourFixedPoint = { 0.7f,0.7f,0.7f };
 
     TetrahedralMesh* cuboid = new TetrahedralMesh("Cuboid", "../resources/models/sceneI/cube.tet", colour);
     cuboid->gravityAffected = false;
@@ -430,13 +434,13 @@ Configuration* Scene::setupConfigurationI()
     {
         if (fabs(pos[0]) < 1e-5)
         {
-            SinglePointMesh* vertex = new SinglePointMesh("", pos, 4);
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 4);
             vertex->dynamicCollisionTest = false;
             configurationI->simulatedObjects.push_back(vertex);
         }
         else if (fabs(pos[0] - 5.f) < 1e-5)
         {
-            SinglePointMesh* vertex = new SinglePointMesh("", pos, 0);
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 0);
             vertex->dynamicCollisionTest = false;
             configurationI->simulatedObjects.push_back(vertex);
         }
@@ -451,6 +455,25 @@ Configuration* Scene::setupConfigurationI()
     buildTwoWayCouplingConstraints(configurationI, cuboid);
 
     return configurationI;
+}
+
+Configuration* Scene::setupConfigurationJ()
+{
+    Configuration* configurationJ = new Configuration();
+
+    addPlaneToConfiguration(configurationJ);
+
+    Vector3f colour = { 0.0f,1.0f,0.f };
+
+    SPHMesh* points = new SPHMesh("", "../resources/models/sceneJ/cuboid.sph", colour);
+    points->gravityAffected = false;
+    points->needCoef = true;
+
+    configurationJ->simulatedObjects.push_back(points);
+
+    setupEstimatePositionOffsets(configurationJ);
+
+    return configurationJ;
 }
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {
