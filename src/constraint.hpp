@@ -38,7 +38,8 @@ enum class ConstraintType
     BendConstraint,
     TetrahedralConstraint,
     StaticCollisionConstraint,
-    TriangleCollisionConstraint
+    TriangleCollisionConstraint,
+    SPHDeformationConstraint
 };
 
 const static map<ConstraintType, string> typeNameString = {
@@ -48,7 +49,8 @@ const static map<ConstraintType, string> typeNameString = {
     {ConstraintType::BendConstraint,"Bend constraint"},
     {ConstraintType::TetrahedralConstraint,"Tetrahedral constraint"},
     {ConstraintType::StaticCollisionConstraint,"Static collision constraint"},
-    {ConstraintType::TriangleCollisionConstraint,"Triangle collision constraint"}
+    {ConstraintType::TriangleCollisionConstraint,"Triangle collision constraint"},
+    {ConstraintType::SPHDeformationConstraint,"SPH deformation constraint"}
 };
 
 struct Params {
@@ -179,8 +181,22 @@ public:
 
 };
 
+class SPHDeformationConstraint : public Constraint
+{
+
+public:
+    SPHDeformationConstraint(Mesh* mesh, int cardinality, bool useMeshCoef = false)
+        : Constraint(mesh, cardinality, useMeshCoef){
+        type = ConstraintType::SPHDeformationConstraint;
+    }
+
+    void project(Configuration* configuration, Params params);
+
+
+};
+
 // calculate stress tensor and stress energy density according to deformation gradient F
-pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params, float PoisonRatio, float YoungModulus);
+pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, ConstitutiveMaterialModel modelType, float PoisonRatio, float YoungModulus);
 
 // Constraint building
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh);
@@ -191,6 +207,7 @@ void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, V
 void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, bool useMeshCoef = false, Mesh* secondMesh = nullptr);
 void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, int indexC, int indexD, float angle);
 void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh);
+void buildSPHDeformationConstraints(Configuration* configuration, SPHMesh* mesh);
 TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape, bool useMeshCoef = false);
 CollisionConstraint* buildStaticCollisionConstraint(Mesh* mesh, int index, Vector3f normal, Vector3f position);
 CollisionConstraint* buildTriangleCollisionConstraint(Mesh* mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC, Mesh* secondMesh);

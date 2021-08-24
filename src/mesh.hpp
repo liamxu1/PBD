@@ -234,6 +234,8 @@ public:
     SPHMesh(const char* name, string filename, Vector3f colour, float inverseMass = 1.0f);
     ~SPHMesh();
 
+    void updateCoefs();
+
     struct Node
     {
         Node(int index, float kernel, Vector3f gradientKernel, Vector3f correctedKernel = Vector3f::Zero(), Vector3f correctedGradient = Vector3f::Zero())
@@ -250,6 +252,9 @@ public:
     vector<Node*> kernelInfos;
     int numCollidingParticles = -1;
     vector<pair<unsigned, float>> collidingInfos;
+
+    float poisonRatio = 0.3f;
+    float YoungModulus = 20;
 
 private:
     // my .sph file format:

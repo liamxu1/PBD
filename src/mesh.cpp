@@ -562,6 +562,8 @@ SPHMesh::SPHMesh(const char* name, string filename, Vector3f colour, float inver
     kernelInfos.resize(numVertices, nullptr);
 
     createKernelInfo();
+
+    backupCoefData = { poisonRatio,YoungModulus };
 }
 
 SPHMesh::~SPHMesh()
@@ -577,6 +579,12 @@ SPHMesh::~SPHMesh()
             delete info;
         }
     }
+}
+
+void SPHMesh::updateCoefs()
+{
+    poisonRatio = backupCoefData[0];
+    YoungModulus = backupCoefData[1];
 }
 
 void SPHMesh::parseSphFile(string filename)

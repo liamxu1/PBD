@@ -243,6 +243,27 @@ CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexInde
     return constraint;
 }
 
+void buildSPHDeformationConstraints(Configuration* configuration, SPHMesh* mesh)
+{
+    int numVertices = mesh->numVertices;
+    for (int i = 0; i < numVertices; i++)
+    {
+        vector<int> indices;
+        indices.clear();
+        auto node = mesh->kernelInfos[i];
+        while (node != nullptr)
+        {
+            indices.push_back(node->index + mesh->estimatePositionsOffset);
+            node = node->next;
+        }
+        SPHDeformationConstraint* constraint = new SPHDeformationConstraint(mesh, indices.size(), true);
+        constraint->indices = indices;
+        constraint->preCompute(configuration);
+
+        configuration->constraints.push_back(constraint);
+    }
+}
+
 void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh)
 {
     for (auto &tetra : mesh->tetrahedrons)
@@ -456,7 +477,7 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     commonOnProjectNormal(configuration, params.solverIterations, c, partialDerivatives);
 }
 
-pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Params params, float PoisonRatio, float YoungModulus)
+pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, ConstitutiveMaterialModel modelType, float PoisonRatio, float YoungModulus)
 {
     float nu = PoisonRatio, k = YoungModulus;
     // lame coefficients
@@ -488,7 +509,7 @@ pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Pa
     
     Vector3f P = Vector3f::Zero();
 
-    switch (params.modelType)
+    switch (modelType)
     {
     case ConstitutiveMaterialModel::StVKModel:
     {
@@ -556,7 +577,7 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
 
     float PoisonRatio = dynamic_cast<TetrahedralMesh*>(mesh)->poisonRatio, YoungModulus = dynamic_cast<TetrahedralMesh*>(mesh)->YoungModulus;
 
-    auto temp = calculateStressTensorAndStressEnergyDensity(F, params, PoisonRatio, YoungModulus);
+    auto temp = calculateStressTensorAndStressEnergyDensity(F, params.modelType, PoisonRatio, YoungModulus);
 
     // stress tensor
     Matrix3f P = temp.first;
@@ -579,4 +600,54 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
     else if (params.type == PBDType::XPBD)
         commonOnProjectExtended(configuration, params.timeStep, energy, partialDerivatives, 1e-9);
 
+}
+
+void SPHDeformationConstraint::project(Configuration* configuration, Params params)
+{
+    /* first index: current vertex
+    * following indices: adjacent vertices
+    * (in the same order of that restored in mesh's kernel information)
+    */
+
+    assert(mesh->meshType == MeshType::SPH);
+    int index = indices[0];
+    int indexInMesh = index - mesh->estimatePositionsOffset;
+
+    SPHMesh* sphMesh = dynamic_cast<SPHMesh*>(mesh);
+
+    float PoisonRatio = sphMesh->poisonRatio, YoungModulus = sphMesh->YoungModulus;
+
+    // Deformation gradient
+    Matrix3f F = Matrix3f::Zero();
+
+    auto node = sphMesh->kernelInfos[indexInMesh];
+    vector<Vector3f> correctedGradients;
+    correctedGradients.reserve(cardinality);
+    while (node != nullptr)
+    {
+        F += sphMesh->volumes[node->index] *
+            (configuration->estimatePositions[node->index + mesh->estimatePositionsOffset]\
+                - configuration->estimatePositions[index]) *
+            node->correctedGradient.transpose();
+        node = node->next;
+        correctedGradients.push_back(node->correctedGradient * sphMesh->volumes[node->index]);
+    }
+
+    auto temp = calculateStressTensorAndStressEnergyDensity(F, params.modelType, PoisonRatio, YoungModulus);
+
+    // stress tensor
+    Matrix3f P = temp.first;
+
+    // energy density
+    float phi = temp.second;
+
+    vector<Vector3f> partialDerivatives(cardinality, Vector3f::Zero());
+
+    for (int i = 1; i < cardinality; i++)
+    {
+        partialDerivatives[i] = P * correctedGradients[i];
+        partialDerivatives[0] -= partialDerivatives[i];
+    }
+
+    commonOnProject(configuration, params, phi, partialDerivatives);
 }
