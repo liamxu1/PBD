@@ -599,7 +599,7 @@ void SPHMesh::parseSphFile(string filename)
     string line;
     getline(sphFile, line);
     istringstream tetline(line);
-    tetline >> numVertices >> numCollidingParticles;
+    tetline >> numVertices >> numFirstCollidingParticles >> numSecondCollidingParticles;
 
     for (int i = 0; i < numVertices; i++)
     {
@@ -609,15 +609,22 @@ void SPHMesh::parseSphFile(string filename)
         sphline >> v[0] >> v[1] >> v[2];
         vertices.push_back(v);
     }
-    for (int i = 0; i < numCollidingParticles; i++)
+    for (int i = 0; i < numFirstCollidingParticles; i++)
     {
         pair<unsigned, float> temp;
         getline(sphFile, line);
         istringstream sphline(line);
         sphline >> temp.first >> temp.second;
-        collidingInfos.push_back(temp);
+        firstCollidingInfos.push_back(temp);
     }
-
+    for (int i = 0; i < numSecondCollidingParticles; i++)
+    {
+        pair<unsigned, float> temp;
+        getline(sphFile, line);
+        istringstream sphline(line);
+        sphline >> temp.first >> temp.second;
+        secondCollidingInfos.push_back(temp);
+    }
 }
 
 void SPHMesh::createKernelInfo()

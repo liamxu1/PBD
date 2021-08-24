@@ -250,15 +250,18 @@ public:
 
     vector<float> volumes;
     vector<Node*> kernelInfos;
-    int numCollidingParticles = -1;
-    vector<pair<unsigned, float>> collidingInfos;
+
+    int numFirstCollidingParticles = -1;
+    int numSecondCollidingParticles = -1;
+    vector<pair<unsigned, float>> firstCollidingInfos;
+    vector<pair<unsigned, float>> secondCollidingInfos;
 
     float poisonRatio = 0.3f;
     float YoungModulus = 20;
 
 private:
     // my .sph file format:
-    // First line: (total vertices number) (border vertices number)
+    // First line: (total vertices number) (first border vertices number)(second border vertices number)
     // Next part: (vertices' positions)
     // ----each line with 3 floats representing the position of one vertex
     // Final part: (borders)
