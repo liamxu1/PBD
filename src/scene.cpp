@@ -426,19 +426,19 @@ Configuration* Scene::setupConfigurationI()
     Vector3f colour = { 0.0f,1.0f,0.f };
     Vector3f colourFixedPoint = { 0.7f,0.7f,0.7f };
 
-    TetrahedralMesh* cuboid = new TetrahedralMesh("Cuboid", "../resources/models/sceneI/cube.tet", colour);
+    TetrahedralMesh* cuboid = new TetrahedralMesh("Cuboid", "../resources/models/sceneI/cuboid.tet", colour);
     cuboid->gravityAffected = false;
     cuboid->needCoef = true;
     
     for (auto &pos : cuboid->vertices)
     {
-        if (fabs(pos[0]) < 1e-5)
+        if (fabs(pos[0] - 2.5f) < 1e-5)
         {
             SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 4);
             vertex->dynamicCollisionTest = false;
             configurationI->simulatedObjects.push_back(vertex);
         }
-        else if (fabs(pos[0] - 5.f) < 1e-5)
+        else if (fabs(pos[0] + 2.5f) < 1e-5)
         {
             SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 0);
             vertex->dynamicCollisionTest = false;
