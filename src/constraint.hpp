@@ -17,8 +17,6 @@ using namespace Eigen;
 class Mesh;
 struct Configuration;
 
-const bool SHOWALLINFO = false;
-
 enum class PBDType
 {
     normalPBD,

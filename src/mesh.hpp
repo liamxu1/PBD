@@ -16,6 +16,9 @@
 using namespace std;
 using namespace Eigen;
 
+const float KERNEL_FUNCTION_THRESHOLD = 0.3f;
+const bool SHOWALLINFO = false;
+
 struct SimpleVertex {
     int p;
 };
@@ -229,8 +232,22 @@ class SPHMesh : public PointBasedMesh
 {
 public:
     SPHMesh(const char* name, string filename, Vector3f colour, float inverseMass = 1.0f);
-    ~SPHMesh(){}
+    ~SPHMesh();
 
+    struct Node
+    {
+        Node(int index, float kernel, Vector3f gradientKernel, Vector3f correctedKernel = Vector3f::Zero(), Vector3f correctedGradient = Vector3f::Zero())
+            :index(index), kernel(kernel), gradientKernel(gradientKernel), correctedKernel(correctedKernel), correctedGradient(correctedGradient), next(nullptr){}
+        int index;
+        float kernel;
+        Vector3f gradientKernel;
+        Vector3f correctedKernel;
+        Vector3f correctedGradient;
+        Node* next;
+    };
+
+    vector<float> volumes;
+    vector<Node*> kernelInfos;
     int numCollidingParticles = -1;
     vector<pair<unsigned, float>> collidingInfos;
 
@@ -242,6 +259,11 @@ private:
     // Final part: (borders)
     // ----each line with a int and a float representing the index and collision radius
     void parseSphFile(string filename);
+
+    void createKernelInfo();
+
+    static float kernelFunction(Vector3f r);
+    static Vector3f gradientKernelFunction(Vector3f r);
 
 };
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP
