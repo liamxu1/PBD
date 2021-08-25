@@ -82,10 +82,16 @@ enum class MeshType
     SPH
 };
 
+enum class MeshBaseType
+{
+    point,
+    line
+};
+
 class Mesh {
 
 public:
-    Mesh(const char* name, MeshType type) :meshName(name), meshType(type) {}
+    Mesh(const char* name, MeshType type, MeshBaseType baseType) :meshName(name), meshType(type),meshBaseType(baseType) {}
     virtual ~Mesh() = 0 {}
 
     void reset();
@@ -96,7 +102,9 @@ public:
 
     string meshName;
     MeshType meshType;
-    bool isLineBased() { return meshType == MeshType::tetrahedral || meshType == MeshType::triangular; }
+    MeshBaseType meshBaseType;
+    bool isLineBased() { return meshBaseType == MeshBaseType::line; }
+    bool isPointBased() { return meshBaseType == MeshBaseType::point; }
 
     virtual void render(Camera* camera, Matrix4f transform){}
 
@@ -135,7 +143,7 @@ protected:
 class LineBasedMesh : public Mesh{
 
 public:
-    LineBasedMesh(const char* name, MeshType type) :Mesh(name, type){}
+    LineBasedMesh(const char* name, MeshType type) :Mesh(name, type, MeshBaseType::line) {}
     virtual ~LineBasedMesh() = 0 {}
     virtual void updateCoefs(){}
     
@@ -210,7 +218,7 @@ private:
 class PointBasedMesh : public Mesh
 {
 public:
-    PointBasedMesh(const char* name, MeshType type) : Mesh(name, type) {}
+    PointBasedMesh(const char* name, MeshType type) : Mesh(name, type, MeshBaseType::point) {}
     virtual ~PointBasedMesh() = 0 {}
 
     virtual void render(Camera* camera, Matrix4f transform);
