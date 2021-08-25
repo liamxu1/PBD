@@ -61,7 +61,7 @@ public:
 private:
 
     void simulate(Configuration *configuration);
-    void generateCollisionConstraints(Configuration *configuration, LineBasedMesh *mesh, int index);
+    void generateCollisionConstraints(Configuration *configuration, Mesh *mesh, int index);
     bool planeIntersection(Vector3f rayOrigin, Vector3f rayDirection, float &t, Vector3f &normal);
     void updateCollisionVelocities(CollisionConstraint* constraint);
 

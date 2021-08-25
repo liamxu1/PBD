@@ -82,11 +82,8 @@ void Simulation::simulate(Configuration *configuration) {
 
     // Generate collision constraints
     for (Mesh* mesh : configuration->simulatedObjects) {
-        if (mesh->isLineBased())
-        {
-            for (int i = 0; i < mesh->numVertices; i++) {
-                generateCollisionConstraints(configuration, dynamic_cast<LineBasedMesh*>(mesh), i);
-            }
+        for (int i = 0; i < mesh->numVertices; i++) {
+            generateCollisionConstraints(configuration, mesh, i);
         }
     }
 
@@ -154,7 +151,7 @@ void Simulation::simulate(Configuration *configuration) {
     */
 }
 
-void Simulation::generateCollisionConstraints(Configuration* configuration, LineBasedMesh *mesh, int index) {
+void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh *mesh, int index) {
 
     // Setup ray
     Vector3f rayOrigin = mesh->vertices[index];
