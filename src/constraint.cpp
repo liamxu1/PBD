@@ -285,6 +285,7 @@ void buildSPHCollisionConstraintsOnOneList(Configuration* configuration, SPHMesh
                 constraint->indices.push_back(indexA + meshA->estimatePositionsOffset);
                 constraint->indices.push_back(indexB + meshB->estimatePositionsOffset);
 
+                constraint->preCompute(configuration);
                 configuration->collisionConstraints.push_back(constraint);
             }
         }
