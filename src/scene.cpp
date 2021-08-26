@@ -174,9 +174,9 @@ bool Scene::isClothSimulation(int index)
 }
 
 Configuration* Scene::setupConfigurationA() {
-    Configuration* configurationA = new Configuration();
+    Configuration* configuration = new Configuration();
 
-    addPlaneToConfiguration(configurationA);
+    addPlaneToConfiguration(configuration);
 
     Vector3f flagPoleColour = { 0.337f, 0.184f, 0.054f };
     TriangularMesh* flagPole = new TriangularMesh("", "../resources/models/sceneA/flagPole.obj", flagPoleColour);
@@ -192,28 +192,28 @@ Configuration* Scene::setupConfigurationA() {
     flagHigh->windAffected = true;
     flagHigh->needCoef = true;
 
-    configurationA->staticObjects.push_back(flagPole);
-    configurationA->staticObjects.push_back(flagPole2);
-    configurationA->simulatedObjects.push_back(flag);
-    configurationA->simulatedObjects.push_back(flagHigh);
+    configuration->staticObjects.push_back(flagPole);
+    configuration->staticObjects.push_back(flagPole2);
+    configuration->simulatedObjects.push_back(flag);
+    configuration->simulatedObjects.push_back(flagHigh);
 
-    setupEstimatePositionOffsets(configurationA);
+    setupEstimatePositionOffsets(configuration);
 
-    for (int i = 0; i < 7; i++) buildFixedConstraint(configurationA, flag, i, flag->initialVertices[i]);
-    buildEdgeConstraints(configurationA, flag);
-    buildBendConstraints(configurationA, flag);
+    for (int i = 0; i < 7; i++) buildFixedConstraint(configuration, flag, i, flag->initialVertices[i]);
+    buildEdgeConstraints(configuration, flag);
+    buildBendConstraints(configuration, flag);
 
-    for (int i = 0; i < 14; i++) buildFixedConstraint(configurationA, flagHigh, i, flagHigh->initialVertices[i]);
-    buildEdgeConstraints(configurationA, flagHigh);
-    buildBendConstraints(configurationA, flagHigh);
+    for (int i = 0; i < 14; i++) buildFixedConstraint(configuration, flagHigh, i, flagHigh->initialVertices[i]);
+    buildEdgeConstraints(configuration, flagHigh);
+    buildBendConstraints(configuration, flagHigh);
 
-    return configurationA;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationB() {
-    Configuration* configurationB = new Configuration();
+    Configuration* configuration = new Configuration();
 
-    addPlaneToConfiguration(configurationB);
+    addPlaneToConfiguration(configuration);
 
     Vector3f clothColour = { 0.0f, 0.6f, 0.0f };
     TriangularMesh* cloth = new TriangularMesh("Cloth", "../resources/models/sceneB/cloth.obj", clothColour);
@@ -224,21 +224,21 @@ Configuration* Scene::setupConfigurationB() {
     TriangularMesh* restObject = new TriangularMesh("", "../resources/models/sceneB/sphere.obj", resetObjectColour);
     restObject->isRigidBody = true;
 
-    configurationB->simulatedObjects.push_back(cloth);
-    configurationB->staticObjects.push_back(restObject);
+    configuration->simulatedObjects.push_back(cloth);
+    configuration->staticObjects.push_back(restObject);
 
-    setupEstimatePositionOffsets(configurationB);
+    setupEstimatePositionOffsets(configuration);
 
-    buildEdgeConstraints(configurationB, cloth);
-    buildBendConstraints(configurationB, cloth);
+    buildEdgeConstraints(configuration, cloth);
+    buildBendConstraints(configuration, cloth);
 
-    return configurationB;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationC() {
-    Configuration* configurationC = new Configuration();
+    Configuration* configuration = new Configuration();
 
-    addPlaneToConfiguration(configurationC);
+    addPlaneToConfiguration(configuration);
 
     Vector3f solidColour = { 1.0f, 1.0f, 1.0f };
     TriangularMesh* attachPoints = new TriangularMesh("", "../resources/models/sceneC/attachPoints.obj", solidColour, 0.0f);
@@ -256,26 +256,26 @@ Configuration* Scene::setupConfigurationC() {
     bar->gravityAffected = true;
     bar->windAffected = true;
 
-    configurationC->simulatedObjects.push_back(attachPoints);
-    configurationC->simulatedObjects.push_back(cloth);
-    configurationC->simulatedObjects.push_back(bar);
+    configuration->simulatedObjects.push_back(attachPoints);
+    configuration->simulatedObjects.push_back(cloth);
+    configuration->simulatedObjects.push_back(bar);
 
-    setupEstimatePositionOffsets(configurationC);
+    setupEstimatePositionOffsets(configuration);
 
-    buildEdgeConstraints(configurationC, cloth);
-    buildBendConstraints(configurationC, cloth);
+    buildEdgeConstraints(configuration, cloth);
+    buildBendConstraints(configuration, cloth);
 
-    buildRigidBodyConstraints(configurationC, bar);
+    buildRigidBodyConstraints(configuration, bar);
 
-    buildTwoWayCouplingConstraints(configurationC, cloth);
+    buildTwoWayCouplingConstraints(configuration, cloth);
 
-    return configurationC;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationD() {
-    Configuration* configurationD = new Configuration();
+    Configuration* configuration = new Configuration();
 
-    addPlaneToConfiguration(configurationD);
+    addPlaneToConfiguration(configuration);
 
     Vector3f colourA = { 1.0f, 1.0f, 0.0f };
     Vector3f colourB = { 1.0f, 0.0f, 1.0f };
@@ -302,26 +302,26 @@ Configuration* Scene::setupConfigurationD() {
     sphere->gravityAffected = true;
     sphere->windAffected = true;
 
-    configurationD->simulatedObjects.push_back(cube);
-    configurationD->simulatedObjects.push_back(pyramid);
-    configurationD->simulatedObjects.push_back(cylinder);
-    configurationD->simulatedObjects.push_back(sphere);
+    configuration->simulatedObjects.push_back(cube);
+    configuration->simulatedObjects.push_back(pyramid);
+    configuration->simulatedObjects.push_back(cylinder);
+    configuration->simulatedObjects.push_back(sphere);
 
-    setupEstimatePositionOffsets(configurationD);
+    setupEstimatePositionOffsets(configuration);
 
-    buildRigidBodyConstraints(configurationD, cube);
-    buildRigidBodyConstraints(configurationD, pyramid);
-    buildRigidBodyConstraints(configurationD, cylinder);
-    buildRigidBodyConstraints(configurationD, sphere);
+    buildRigidBodyConstraints(configuration, cube);
+    buildRigidBodyConstraints(configuration, pyramid);
+    buildRigidBodyConstraints(configuration, cylinder);
+    buildRigidBodyConstraints(configuration, sphere);
 
-    return configurationD;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationE()
 {
-    Configuration* configurationE = new Configuration();
+    Configuration* configuration = new Configuration();
     
-    addPlaneToConfiguration(configurationE);
+    addPlaneToConfiguration(configuration);
 
     Vector3f colourA = { 0.0f,1.0f,0.0f };
     TetrahedralMesh* cube = new TetrahedralMesh("Cube", "../resources/models/sceneE/cube.tet", colourA);
@@ -329,19 +329,19 @@ Configuration* Scene::setupConfigurationE()
     cube->isRigidBody = true;
     cube->gravityAffected = true;
 
-    configurationE->simulatedObjects.push_back(cube);
+    configuration->simulatedObjects.push_back(cube);
 
-    setupEstimatePositionOffsets(configurationE);
+    setupEstimatePositionOffsets(configuration);
 
-    buildRigidBodyConstraints(configurationE, cube);
+    buildRigidBodyConstraints(configuration, cube);
 
-    return configurationE;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationF()
 {
-    Configuration* configurationF = new Configuration();
-    addPlaneToConfiguration(configurationF);
+    Configuration* configuration = new Configuration();
+    addPlaneToConfiguration(configuration);
 
     Vector3f colourA = { 0.0f,1.0f,0.f };
 
@@ -349,19 +349,19 @@ Configuration* Scene::setupConfigurationF()
     cubeA->gravityAffected = true;
     cubeA->needCoef = true;
 
-    configurationF->simulatedObjects.push_back(cubeA);
+    configuration->simulatedObjects.push_back(cubeA);
 
-    setupEstimatePositionOffsets(configurationF);
+    setupEstimatePositionOffsets(configuration);
 
-    buildTetrahedralConstraints(configurationF, cubeA);
+    buildTetrahedralConstraints(configuration, cubeA);
 
-    return configurationF;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationG()
 {
-    Configuration* configurationG = new Configuration();
-    addPlaneToConfiguration(configurationG);
+    Configuration* configuration = new Configuration();
+    addPlaneToConfiguration(configuration);
 
     Vector3f colourA = { 0.0f,1.0f,0.0f };
     Vector3f colourB = { 1.0f,0.0f,0.0f };
@@ -374,20 +374,20 @@ Configuration* Scene::setupConfigurationG()
     cubeB->gravityAffected = true;
     cubeB->needCoef = true;
     
-    configurationG->simulatedObjects.push_back(cubeA);
-    configurationG->simulatedObjects.push_back(cubeB);
+    configuration->simulatedObjects.push_back(cubeA);
+    configuration->simulatedObjects.push_back(cubeB);
 
-    setupEstimatePositionOffsets(configurationG);
+    setupEstimatePositionOffsets(configuration);
 
-    buildTetrahedralConstraints(configurationG, cubeA);
-    buildTetrahedralConstraints(configurationG, cubeB);
+    buildTetrahedralConstraints(configuration, cubeA);
+    buildTetrahedralConstraints(configuration, cubeB);
 
-    return configurationG;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationH()
 {
-    Configuration* configurationH = new Configuration();
+    Configuration* configuration = new Configuration();
 
     Vector3f colour = { 0.0f,1.0f,0.f };
 
@@ -406,22 +406,22 @@ Configuration* Scene::setupConfigurationH()
     for (auto vertex : vertices)
     {
         vertex->dynamicCollisionTest = false;
-        configurationH->simulatedObjects.push_back(vertex);
+        configuration->simulatedObjects.push_back(vertex);
     }
-    configurationH->simulatedObjects.push_back(cube);
+    configuration->simulatedObjects.push_back(cube);
 
-    setupEstimatePositionOffsets(configurationH);
+    setupEstimatePositionOffsets(configuration);
 
-    buildTetrahedralConstraints(configurationH, cube);
+    buildTetrahedralConstraints(configuration, cube);
 
-    buildTwoWayCouplingConstraints(configurationH, cube);
+    buildTwoWayCouplingConstraints(configuration, cube);
 
-    return configurationH;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationI()
 {
-    Configuration* configurationI = new Configuration();
+    Configuration* configuration = new Configuration();
 
     Vector3f colour = { 0.0f,1.0f,0.f };
     Vector3f colourFixedPoint = { 0.7f,0.7f,0.7f };
@@ -436,32 +436,32 @@ Configuration* Scene::setupConfigurationI()
         {
             SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 4);
             vertex->dynamicCollisionTest = false;
-            configurationI->simulatedObjects.push_back(vertex);
+            configuration->simulatedObjects.push_back(vertex);
         }
         else if (fabs(pos[0] + 2.5f) < 1e-5)
         {
             SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 0);
             vertex->dynamicCollisionTest = false;
-            configurationI->simulatedObjects.push_back(vertex);
+            configuration->simulatedObjects.push_back(vertex);
         }
     }
 
-    configurationI->simulatedObjects.push_back(cuboid);
+    configuration->simulatedObjects.push_back(cuboid);
 
-    setupEstimatePositionOffsets(configurationI);
+    setupEstimatePositionOffsets(configuration);
 
-    buildTetrahedralConstraints(configurationI, cuboid);
+    buildTetrahedralConstraints(configuration, cuboid);
 
-    buildTwoWayCouplingConstraints(configurationI, cuboid);
+    buildTwoWayCouplingConstraints(configuration, cuboid);
 
-    return configurationI;
+    return configuration;
 }
 
 Configuration* Scene::setupConfigurationJ()
 {
-    Configuration* configurationJ = new Configuration();
+    Configuration* configuration = new Configuration();
 
-    addPlaneToConfiguration(configurationJ);
+    addPlaneToConfiguration(configuration);
 
     Vector3f colour = { 0.0f,1.0f,0.f };
 
@@ -469,13 +469,13 @@ Configuration* Scene::setupConfigurationJ()
     cuboid->gravityAffected = true;
     cuboid->needCoef = true;
 
-    configurationJ->simulatedObjects.push_back(cuboid);
+    configuration->simulatedObjects.push_back(cuboid);
 
-    setupEstimatePositionOffsets(configurationJ);
+    setupEstimatePositionOffsets(configuration);
 
-    buildSPHDeformationConstraints(configurationJ, cuboid);
+    buildSPHDeformationConstraints(configuration, cuboid);
 
-    return configurationJ;
+    return configuration;
 }
 
 void Scene::addPlaneToConfiguration(Configuration* configuration) {
