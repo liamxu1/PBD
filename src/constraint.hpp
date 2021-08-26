@@ -69,7 +69,7 @@ struct Params {
 class Constraint {
 
 public:
-    Constraint(Mesh* mesh, int cardinality, bool useMeshCoef, bool showStatus = SHOWALLINFO) :
+    Constraint(Mesh* mesh, int cardinality, bool useMeshCoef, bool showStatus = SHOW_PROCEDURE_INFO) :
         mesh(mesh), cardinality(cardinality), showStatus(showStatus), useMeshCoef(useMeshCoef){}
     void preCompute(Configuration* configuration);
     virtual void project(Configuration* configuration, Params params) {}

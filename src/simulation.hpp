@@ -68,7 +68,7 @@ private:
     // Forces
     float windOscillation = 0.0f;
 
-    bool showStatus = SHOWALLINFO;
+    bool showStatus = SHOW_PROCEDURE_INFO;
 
     // for imGui render
 

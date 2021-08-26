@@ -17,7 +17,8 @@ using namespace std;
 using namespace Eigen;
 
 const float KERNEL_FUNCTION_THRESHOLD = 0.3f;
-const bool SHOWALLINFO = false;
+const bool SHOW_PROCEDURE_INFO = false;
+const bool SHOW_MESH_INFO = false;
 
 struct SimpleVertex {
     int p;

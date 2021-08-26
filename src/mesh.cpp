@@ -689,7 +689,7 @@ void SPHMesh::createKernelInfo()
             current = current->next;
         }
 
-        if (SHOWALLINFO)
+        if (SHOW_MESH_INFO)
         {
             cout << "-------------------------------------\n";
             cout << i << '\n';
