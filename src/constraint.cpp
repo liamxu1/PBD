@@ -275,10 +275,10 @@ void buildSPHCollisionConstraintsOnOneList(Configuration* configuration, SPHMesh
         for (auto& vertexB : listB)
         {
             unsigned indexB = vertexB.first;
-            if (threshold && (meshA->initialVertices[indexA] - meshB->initialVertices[indexB]).norm() < SPH_SELF_COLLISION_DETECTION_THRESHOLD)
+            if (threshold && (configuration->estimatePositions[indexA + meshA->estimatePositionsOffset] - configuration->estimatePositions[indexB + meshB->estimatePositionsOffset]).norm() < SPH_SELF_COLLISION_DETECTION_THRESHOLD)
                 continue;
             float radiusB = vertexB.second;
-            if ((meshA->vertices[indexA] - meshB->vertices[indexB]).norm() < radiusA + radiusB)
+            if ((configuration->estimatePositions[indexA + meshA->estimatePositionsOffset] - configuration->estimatePositions[indexB + meshB->estimatePositionsOffset]).norm() < radiusA + radiusB)
             {
                 PointCollisionConstraint* constraint = new PointCollisionConstraint(meshA, 2, radiusA + radiusB);
                 constraint->relatedMesh = meshB;
