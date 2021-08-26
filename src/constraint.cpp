@@ -6,6 +6,8 @@
 #include <main.hpp>
 #include <constraint.hpp>
 
+const float SPH_SELF_COLLISION_DETECTION_THRESHOLD = 5.0f;
+
 void Constraint::preCompute(Configuration* configuration) {
     inverseMasses.resize(cardinality);
     for (int i = 0; i < cardinality; i++)
@@ -264,6 +266,50 @@ void buildSPHDeformationConstraints(Configuration* configuration, SPHMesh* mesh)
     }
 }
 
+void buildSPHCollisionConstraintsOnOneList(Configuration* configuration, SPHMesh* meshA, SPHMesh* meshB, vector<pair<unsigned, float>>& listA, vector<pair<unsigned, float>>& listB, bool threshold)
+{
+    for (auto& vertexA : listA)
+    {
+        unsigned indexA = vertexA.first;
+        float radiusA = vertexA.second;
+        for (auto& vertexB : listB)
+        {
+            unsigned indexB = vertexB.first;
+            if (threshold && (meshA->initialVertices[indexA] - meshB->initialVertices[indexB]).norm() < SPH_SELF_COLLISION_DETECTION_THRESHOLD)
+                continue;
+            float radiusB = vertexB.second;
+            if ((meshA->vertices[indexA] - meshB->vertices[indexB]).norm() < radiusA + radiusB)
+            {
+                PointCollisionConstraint* constraint = new PointCollisionConstraint(meshA, 2, radiusA + radiusB);
+                constraint->relatedMesh = meshB;
+                constraint->indices.push_back(indexA + meshA->estimatePositionsOffset);
+                constraint->indices.push_back(indexB + meshB->estimatePositionsOffset);
+
+                configuration->collisionConstraints.push_back(constraint);
+            }
+        }
+    }
+}
+
+void buildSPHSelfCollisionConstraints(Configuration* configuration, SPHMesh* mesh)
+{
+    if (!mesh->selfCollisionTest) return;
+
+    buildSPHCollisionConstraintsOnOneList(configuration, mesh, mesh, mesh->firstCollidingInfos, mesh->firstCollidingInfos, true);
+    buildSPHCollisionConstraintsOnOneList(configuration, mesh, mesh, mesh->firstCollidingInfos, mesh->secondCollidingInfos, true);
+}
+
+void buildSPHCollisionConstraints(Configuration* configuration, SPHMesh* meshA, SPHMesh* meshB)
+{
+    if (!meshA->dynamicCollisionTest || !meshB->dynamicCollisionTest) return;
+    if (meshA->estimatePositionsOffset == meshB->estimatePositionsOffset) return;
+
+    buildSPHCollisionConstraintsOnOneList(configuration, meshA, meshB, meshA->firstCollidingInfos, meshB->firstCollidingInfos, false);
+    buildSPHCollisionConstraintsOnOneList(configuration, meshA, meshB, meshA->firstCollidingInfos, meshB->secondCollidingInfos, false);
+    buildSPHCollisionConstraintsOnOneList(configuration, meshA, meshB, meshA->secondCollidingInfos, meshB->firstCollidingInfos, false);
+    buildSPHCollisionConstraintsOnOneList(configuration, meshA, meshB, meshA->secondCollidingInfos, meshB->secondCollidingInfos, false);
+}
+
 void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh)
 {
     for (auto &tetra : mesh->tetrahedrons)
@@ -477,6 +523,30 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     commonOnProjectNormal(configuration, params.solverIterations, c, partialDerivatives);
 }
 
+void PointCollisionConstraint::project(Configuration* configuration, Params params) {
+
+    assert(cardinality == 2);
+
+    float w1 = inverseMasses[0], w2 = inverseMasses[1];
+    if (w1 + w2 < EPSILONTHRESHOLD) return;
+
+    Vector3f p1 = configuration->estimatePositions[indices[0]];
+    Vector3f p2 = configuration->estimatePositions[indices[1]];
+
+    float a = (p1 - p2).norm() - distance;
+
+    if (a > 0) return;
+
+    Vector3f n = (p1 - p2) / ((p1 - p2).norm() + EPSILON);
+    Vector3f b = n * a;
+
+    normal = n;
+
+    vector<Vector3f> partialDerivatives = { n, -n };
+    
+    commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
+}
+
 pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, ConstitutiveMaterialModel modelType, float PoisonRatio, float YoungModulus)
 {
     float nu = PoisonRatio, k = YoungModulus;
@@ -629,8 +699,8 @@ void SPHDeformationConstraint::project(Configuration* configuration, Params para
             (configuration->estimatePositions[node->index + mesh->estimatePositionsOffset]\
                 - configuration->estimatePositions[index]) *
             node->correctedGradient.transpose();
-        node = node->next;
         correctedGradients.push_back(node->correctedGradient * sphMesh->volumes[node->index]);
+        node = node->next;
     }
 
     auto temp = calculateStressTensorAndStressEnergyDensity(F, params.modelType, PoisonRatio, YoungModulus);
@@ -649,5 +719,8 @@ void SPHDeformationConstraint::project(Configuration* configuration, Params para
         partialDerivatives[0] -= partialDerivatives[i];
     }
 
-    commonOnProject(configuration, params, phi, partialDerivatives);
+    if (params.type == PBDType::normalPBD)
+        commonOnProjectNormal(configuration, params.solverIterations, phi, partialDerivatives);
+    else if (params.type == PBDType::XPBD)
+        commonOnProjectExtended(configuration, params.timeStep, phi, partialDerivatives, 1e-7);
 }

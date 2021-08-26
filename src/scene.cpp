@@ -465,13 +465,15 @@ Configuration* Scene::setupConfigurationJ()
 
     Vector3f colour = { 0.0f,1.0f,0.f };
 
-    SPHMesh* points = new SPHMesh("", "../resources/models/sceneJ/cuboid.sph", colour);
-    points->gravityAffected = false;
-    points->needCoef = true;
+    SPHMesh* cuboid = new SPHMesh("Cuboid", "../resources/models/sceneJ/cuboid.sph", colour);
+    cuboid->gravityAffected = true;
+    cuboid->needCoef = true;
 
-    configurationJ->simulatedObjects.push_back(points);
+    configurationJ->simulatedObjects.push_back(cuboid);
 
     setupEstimatePositionOffsets(configurationJ);
+
+    buildSPHDeformationConstraints(configurationJ, cuboid);
 
     return configurationJ;
 }

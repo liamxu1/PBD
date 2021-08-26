@@ -87,6 +87,20 @@ void Simulation::simulate(Configuration *configuration) {
         }
     }
 
+    for (Mesh* meshA : configuration->simulatedObjects) {
+        if (meshA->meshType == MeshType::SPH)
+        {
+            for (Mesh* meshB : configuration->simulatedObjects)
+            {
+                if (meshA == meshB) buildSPHSelfCollisionConstraints(configuration, dynamic_cast<SPHMesh*>(meshA));
+                else if (meshB->meshType == MeshType::SPH)
+                {
+                    buildSPHCollisionConstraints(configuration, dynamic_cast<SPHMesh*>(meshA), dynamic_cast<SPHMesh*>(meshB));
+                }
+            }
+        }
+    }
+
     // Setup constraint parameters
     Params params;
     params.solverIterations = solverIterations;
@@ -351,6 +365,14 @@ void Simulation::renderGUI() {
                 ImGui::SliderFloat((string("##dampFactor") + mesh->meshName).c_str(), &(mesh->backupCoefData[4]), 0.001f, 1.0f);
             }
             else if (mesh->meshType == MeshType::tetrahedral)
+            {
+                ImGui::Text("Poison's Ratio");
+                ImGui::SliderFloat((string("##PoisonRatio") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.001f, 0.499f);
+
+                ImGui::Text("Young's Modulus");
+                ImGui::SliderFloat((string("##YoungModulus") + mesh->meshName).c_str(), &(mesh->backupCoefData[1]), 1.0f, 100.f);
+            }
+            else if (mesh->meshType == MeshType::SPH)
             {
                 ImGui::Text("Poison's Ratio");
                 ImGui::SliderFloat((string("##PoisonRatio") + mesh->meshName).c_str(), &(mesh->backupCoefData[0]), 0.001f, 0.499f);

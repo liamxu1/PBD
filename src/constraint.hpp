@@ -39,6 +39,7 @@ enum class ConstraintType
     TetrahedralConstraint,
     StaticCollisionConstraint,
     TriangleCollisionConstraint,
+    PointCollisionConstraint,
     SPHDeformationConstraint
 };
 
@@ -50,6 +51,7 @@ const static map<ConstraintType, string> typeNameString = {
     {ConstraintType::TetrahedralConstraint,"Tetrahedral constraint"},
     {ConstraintType::StaticCollisionConstraint,"Static collision constraint"},
     {ConstraintType::TriangleCollisionConstraint,"Triangle collision constraint"},
+    {ConstraintType::PointCollisionConstraint, "Point collision constraint"},
     {ConstraintType::SPHDeformationConstraint,"SPH deformation constraint"}
 };
 
@@ -181,6 +183,18 @@ public:
 
 };
 
+class PointCollisionConstraint : public CollisionConstraint {
+
+public:
+    PointCollisionConstraint(Mesh* mesh, int cardinality, float distance, bool useMeshCoef = false)
+        : CollisionConstraint(mesh, cardinality, Vector3f::Zero(), useMeshCoef), distance(distance){
+        type = ConstraintType::PointCollisionConstraint;
+    }
+    void project(Configuration* configuration, Params params);
+
+    float distance;
+};
+
 class SPHDeformationConstraint : public Constraint
 {
 
@@ -208,6 +222,8 @@ void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int index
 void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, int indexC, int indexD, float angle);
 void buildTetrahedralConstraints(Configuration* configuration, TetrahedralMesh* mesh);
 void buildSPHDeformationConstraints(Configuration* configuration, SPHMesh* mesh);
+void buildSPHCollisionConstraints(Configuration* configuration, SPHMesh* meshA, SPHMesh* meshB);
+void buildSPHSelfCollisionConstraints(Configuration* configuration, SPHMesh* mesh);
 TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int indexB, int indexC, int indexD, Matrix3f originalShape, bool useMeshCoef = false);
 CollisionConstraint* buildStaticCollisionConstraint(Mesh* mesh, int index, Vector3f normal, Vector3f position);
 CollisionConstraint* buildTriangleCollisionConstraint(Mesh* mesh, int vertexIndex, Vector3f normal, float height, int indexA, int indexB, int indexC, Mesh* secondMesh);
