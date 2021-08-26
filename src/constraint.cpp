@@ -723,5 +723,5 @@ void SPHDeformationConstraint::project(Configuration* configuration, Params para
     if (params.type == PBDType::normalPBD)
         commonOnProjectNormal(configuration, params.solverIterations, phi, partialDerivatives);
     else if (params.type == PBDType::XPBD)
-        commonOnProjectExtended(configuration, params.timeStep, phi, partialDerivatives, 1e-7);
+        commonOnProjectExtended(configuration, params.timeStep, phi, partialDerivatives, 1e-5);
 }
