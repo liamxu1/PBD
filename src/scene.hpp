@@ -15,6 +15,16 @@ const int INITIAL_SCENE_INDEX = 2;
 class Constraint;
 class CollisionConstraint;
 
+enum class KeyBoardControlling
+{
+    NOT_ALLOW_ANY_MOVE,
+    CONTROLLING_POINT_LEFT_RIGHT_MOVE,
+    CONTROLLING_POINT_LEFT_RIGHT_UP_DOWN_MOVE,
+    CONTROLLING_POINT_ALL_MOVE,
+    FIRST_OBJECT_ALL_MOVE,
+    ALLOW_ALL_MOVE
+};
+
 struct Configuration {
     vector<Mesh*> staticObjects;
     vector<Mesh*> simulatedObjects;
@@ -32,6 +42,8 @@ struct Configuration {
         for (Constraint* constraint : constraints) delete constraint;
         for (CollisionConstraint* constraint : collisionConstraints) delete constraint;
     }
+
+    KeyBoardControlling allowMove = KeyBoardControlling::NOT_ALLOW_ANY_MOVE;
 };
 
 class Scene {
@@ -60,6 +72,7 @@ public:
     Configuration* currentConfiguration;
 
     bool isClothSimulation(int index = -1);
+    KeyBoardControlling allowMoveStatus(int index);
 
 private:
 
@@ -76,6 +89,7 @@ private:
     Configuration* setupConfigurationJ();
     Configuration* setupConfigurationK();
     Configuration* setupConfigurationL();
+    Configuration* setupConfigurationM();
     void addPlaneToConfiguration(Configuration* configuration);
     void setupEstimatePositionOffsets(Configuration* configuration);
 

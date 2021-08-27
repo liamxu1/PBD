@@ -13,6 +13,8 @@
 #include <GL/glew.h>
 #include <camera.hpp>
 
+const int XMOVE = 4, YMOVE = 2, ZMOVE = 1;
+
 using namespace std;
 using namespace Eigen;
 

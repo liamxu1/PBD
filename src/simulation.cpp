@@ -287,8 +287,6 @@ void Simulation::renderGUI() {
     ImGui::Begin("Simulator");
 
     ImGui::Text("Scene Selection");
-    ImGui::SameLine();
-    HelpMarker("In scenes C, H and I, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to control the fixed points.");
 
     int sceneNum = scene->sceneNum();
     char info[] = "Show Scene A";
@@ -301,6 +299,39 @@ void Simulation::renderGUI() {
         if (ImGui::Selectable(info, isSelected))
         {
             currentSceneIndex = i;
+        }
+        switch (scene->allowMoveStatus(i))
+        {
+        case KeyBoardControlling::NOT_ALLOW_ANY_MOVE:
+            break;
+
+        case KeyBoardControlling::ALLOW_ALL_MOVE:
+            ImGui::SameLine();
+            HelpMarker("In this scene, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to move all points.");
+            break;
+
+        case KeyBoardControlling::CONTROLLING_POINT_ALL_MOVE:
+            ImGui::SameLine();
+            HelpMarker("In this scene, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to move controlling points.");
+            break;
+
+        case KeyBoardControlling::CONTROLLING_POINT_LEFT_RIGHT_MOVE:
+            ImGui::SameLine();
+            HelpMarker("In this scene, you can use keys LEFT and RIGHT to move controlling points.");
+            break;
+
+        case KeyBoardControlling::CONTROLLING_POINT_LEFT_RIGHT_UP_DOWN_MOVE:
+            ImGui::SameLine();
+            HelpMarker("In this scene, you can use keys UP, DOWN, LEFT and RIGHT to move controlling points.");
+            break;
+
+        case KeyBoardControlling::FIRST_OBJECT_ALL_MOVE:
+            ImGui::SameLine();
+            HelpMarker("In this scene, you can use keys UP, DOWN, LEFT, RIGHT, COMMA and PERIOD to move a object.");
+            break;
+
+        default:
+            break;
         }
     }
     scene->setConfiguration(currentSceneIndex);

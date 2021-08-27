@@ -25,6 +25,7 @@ Scene::Scene() {
     //configurations.push_back(setupConfigurationJ());
     configurations.push_back(setupConfigurationK());
     configurations.push_back(setupConfigurationL());
+    configurations.push_back(setupConfigurationM());
     currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
@@ -53,58 +54,82 @@ void Scene::setConfiguration(int index) {
 
 void Scene::translateInteraction(Vector3f translate, size_t axis) {
 
-    // Translate the attachment points in scene 3
-    if (currentConfiguration == configurations[2]) {
-        currentConfiguration->simulatedObjects[0]->translate(translate);
-    }
-
-    // Translate the controlling points in scene 8
-    else if (currentConfiguration == configurations[7])
+    switch (currentConfiguration->allowMove)
     {
-        size_t n = currentConfiguration->simulatedObjects.size();
-        for (size_t i = 0; i < n - 1; i++)
-        {
-            auto mesh = currentConfiguration->simulatedObjects[i];
-            assert(mesh->meshType == MeshType::singlePoint);
-            bool direction = true;
-            switch (axis)
-            {
-            case 0:
-                direction = dynamic_cast<SinglePointMesh*>(mesh)->x;
-                break;
-            case 1:
-                direction = dynamic_cast<SinglePointMesh*>(mesh)->y;
-                break;
-            case 2:
-                direction = dynamic_cast<SinglePointMesh*>(mesh)->z;
-                break;
-            default:
-                cout << "Error: wrong axis used in function Scene::translateInteraction()\n\n";
-                break;
-            }
+    case KeyBoardControlling::NOT_ALLOW_ANY_MOVE:
+        break;
 
-            if (direction)
-            {
-                mesh->vertices[0] += translate;
-            }
-            else
-            {
-                mesh->vertices[0] -= translate;
-            }
-        }
-    }
 
-    // Translate the controlling points in scene 9
-    else if (currentConfiguration == configurations[8])
+    case KeyBoardControlling::CONTROLLING_POINT_LEFT_RIGHT_MOVE:
     {
         if (axis == 0)
         {
-            size_t n = currentConfiguration->simulatedObjects.size();
-            for (size_t i = 0; i < n - 1; i++)
+            for (auto mesh : currentConfiguration->simulatedObjects)
             {
-                auto mesh = currentConfiguration->simulatedObjects[i];
-                assert(mesh->meshType == MeshType::singlePoint);
-                bool direction = dynamic_cast<SinglePointMesh*>(mesh)->x;
+                if (mesh->meshType == MeshType::singlePoint)
+                {
+                    bool direction = dynamic_cast<SinglePointMesh*>(mesh)->x;
+                    if (direction)
+                    {
+                        mesh->vertices[0] += translate;
+                    }
+                    else
+                    {
+                        mesh->vertices[0] -= translate;
+                    }
+                }
+            }
+        }
+        break;
+    }
+
+    case KeyBoardControlling::CONTROLLING_POINT_LEFT_RIGHT_UP_DOWN_MOVE:
+    {
+        if (axis == 0 || axis == 1)
+        {
+            for (auto mesh : currentConfiguration->simulatedObjects)
+            {
+                if (mesh->meshType == MeshType::singlePoint)
+                {
+                    bool direction = (axis == 0) ? dynamic_cast<SinglePointMesh*>(mesh)->x : dynamic_cast<SinglePointMesh*>(mesh)->y;
+                    if (direction)
+                    {
+                        mesh->vertices[0] += translate;
+                    }
+                    else
+                    {
+                        mesh->vertices[0] -= translate;
+                    }
+                }
+            }
+        }
+        break;
+    }
+
+
+    case KeyBoardControlling::CONTROLLING_POINT_ALL_MOVE:
+    {
+        for (auto mesh : currentConfiguration->simulatedObjects)
+        {
+            if (mesh->meshType == MeshType::singlePoint)
+            {
+                bool direction = true;
+                switch (axis)
+                {
+                case 0:
+                    direction = dynamic_cast<SinglePointMesh*>(mesh)->x;
+                    break;
+                case 1:
+                    direction = dynamic_cast<SinglePointMesh*>(mesh)->y;
+                    break;
+                case 2:
+                    direction = dynamic_cast<SinglePointMesh*>(mesh)->z;
+                    break;
+                default:
+                    cout << "Error: wrong axis used in function Scene::translateInteraction()\n\n";
+                    break;
+                }
+
                 if (direction)
                 {
                     mesh->vertices[0] += translate;
@@ -115,6 +140,22 @@ void Scene::translateInteraction(Vector3f translate, size_t axis) {
                 }
             }
         }
+        break;
+    }
+
+    case KeyBoardControlling::FIRST_OBJECT_ALL_MOVE:
+        currentConfiguration->simulatedObjects[0]->translate(translate);
+        break;
+
+    case KeyBoardControlling::ALLOW_ALL_MOVE:
+        for (auto mesh : currentConfiguration->simulatedObjects)
+        {
+            mesh->translate(translate);
+        }
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -173,6 +214,17 @@ bool Scene::isClothSimulation(int index)
     if (count > 0)
         return true;
     return false;
+}
+
+KeyBoardControlling Scene::allowMoveStatus(int index)
+{
+    if (index < 0 || index >= sceneNum())
+    {
+        cout << "Incorrectly use function Scene::allowMoveStatus()\nIndex should be within [0, sceneNum - 1]\n\n";
+        return KeyBoardControlling::NOT_ALLOW_ANY_MOVE;
+    }
+    else
+        return configurations[index]->allowMove;
 }
 
 Configuration* Scene::setupConfigurationA() {
@@ -239,6 +291,7 @@ Configuration* Scene::setupConfigurationB() {
 
 Configuration* Scene::setupConfigurationC() {
     Configuration* configuration = new Configuration();
+    configuration->allowMove = KeyBoardControlling::FIRST_OBJECT_ALL_MOVE;
 
     addPlaneToConfiguration(configuration);
 
@@ -390,6 +443,7 @@ Configuration* Scene::setupConfigurationG()
 Configuration* Scene::setupConfigurationH()
 {
     Configuration* configuration = new Configuration();
+    configuration->allowMove = KeyBoardControlling::CONTROLLING_POINT_ALL_MOVE;
 
     Vector3f colour = { 0.0f,1.0f,0.f };
 
@@ -424,6 +478,7 @@ Configuration* Scene::setupConfigurationH()
 Configuration* Scene::setupConfigurationI()
 {
     Configuration* configuration = new Configuration();
+    configuration->allowMove = KeyBoardControlling::CONTROLLING_POINT_LEFT_RIGHT_UP_DOWN_MOVE;
 
     Vector3f colour = { 0.0f,1.0f,0.f };
     Vector3f colourFixedPoint = { 0.7f,0.7f,0.7f };
@@ -436,13 +491,13 @@ Configuration* Scene::setupConfigurationI()
     {
         if (fabs(pos[0] - 2.5f) < 1e-5)
         {
-            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 4);
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, XMOVE | YMOVE);
             vertex->dynamicCollisionTest = false;
             configuration->simulatedObjects.push_back(vertex);
         }
         else if (fabs(pos[0] + 2.5f) < 1e-5)
         {
-            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, 0);
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, YMOVE);
             vertex->dynamicCollisionTest = false;
             configuration->simulatedObjects.push_back(vertex);
         }
@@ -532,6 +587,45 @@ Configuration* Scene::setupConfigurationL()
 
     buildSPHDeformationConstraints(configuration, cuboidA);
     buildSPHDeformationConstraints(configuration, cuboidB);
+
+    return configuration;
+}
+
+Configuration* Scene::setupConfigurationM()
+{
+    Configuration* configuration = new Configuration();
+    configuration->allowMove = KeyBoardControlling::CONTROLLING_POINT_LEFT_RIGHT_UP_DOWN_MOVE;
+
+    Vector3f colour = { 0.0f,1.0f,0.f };
+    Vector3f colourFixedPoint = { 0.7f,0.7f,0.7f };
+
+    SPHMesh* cuboid = new SPHMesh("Cuboid", "../resources/models/sceneM/cuboid.sph", colour);
+    cuboid->gravityAffected = false;
+    cuboid->needCoef = true;
+
+    for (auto& pos : cuboid->vertices)
+    {
+        if (fabs(pos[0] - 2.5f) < 1e-5)
+        {
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, XMOVE | YMOVE);
+            vertex->dynamicCollisionTest = false;
+            configuration->simulatedObjects.push_back(vertex);
+        }
+        else if (fabs(pos[0] + 2.5f) < 1e-5)
+        {
+            SinglePointMesh* vertex = new SinglePointMesh("", pos, colourFixedPoint, YMOVE);
+            vertex->dynamicCollisionTest = false;
+            configuration->simulatedObjects.push_back(vertex);
+        }
+    }
+
+    configuration->simulatedObjects.push_back(cuboid);
+
+    setupEstimatePositionOffsets(configuration);
+
+    buildSPHDeformationConstraints(configuration, cuboid);
+
+    buildTwoWayCouplingConstraints(configuration, cuboid);
 
     return configuration;
 }
