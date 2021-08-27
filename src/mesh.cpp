@@ -9,8 +9,6 @@
 #include <mesh.hpp>
 #include <main.hpp>
 
-const float h = KERNEL_FUNCTION_THRESHOLD;
-
 Matrix3f CrossMat(Vector3f vec)
 {
     Matrix3f mat;
@@ -561,7 +559,10 @@ SPHMesh::SPHMesh(const char* name, string filename, Vector3f colour, float inver
     volumes.resize(numVertices, volume);
     kernelInfos.resize(numVertices, nullptr);
 
-    createKernelInfo();
+    while (!createKernelInfo())
+    {
+        adjustKernelThreshold();
+    }
 
     backupCoefData = { poisonRatio,YoungModulus };
 }
@@ -627,25 +628,28 @@ void SPHMesh::parseSphFile(string filename)
     }
 }
 
-void SPHMesh::createKernelInfo()
+bool SPHMesh::createKernelInfo()
 {
     for (int i = 0; i < numVertices; i++)
     {
+        int neighbourCount = 0;
         for (int j = 0; j < numVertices; j++)
         {
             if (j == i) continue;
 
             Vector3f r = vertices[i] - vertices[j];
-            float kernel = kernelFunction(r);
+            float kernel = kernelFunction(r, h);
             if (kernel == 0) continue;
 
-            Vector3f gradient = gradientKernelFunction(r);
+            Vector3f gradient = gradientKernelFunction(r, h);
             Node* node = new Node(j, kernel, gradient);
             node->next = kernelInfos[i];
             kernelInfos[i] = node;
+            neighbourCount++;
         }
+        if (neighbourCount < 3) return false;
 
-        float kernel = kernelFunction(Vector3f::Zero());
+        float kernel = kernelFunction(Vector3f::Zero(), h);
         Node* node = new Node(i, kernel, Vector3f::Zero());
         node->next = kernelInfos[i];
         kernelInfos[i] = node;
@@ -708,9 +712,15 @@ void SPHMesh::createKernelInfo()
         }
     }
 
+    return true;
 }
 
-float SPHMesh::kernelFunction(Vector3f r)
+void SPHMesh::adjustKernelThreshold()
+{
+    h += 0.01;
+}
+
+float SPHMesh::kernelFunction(Vector3f r, float h)
 {
     static float coeff = 315.f / (64.f * PI * powf(h, 9));
     float distance = r.norm();
@@ -719,7 +729,7 @@ float SPHMesh::kernelFunction(Vector3f r)
     return  coeff * powf(h * h - distance * distance, 3);
 }
 
-Vector3f SPHMesh::gradientKernelFunction(Vector3f r)
+Vector3f SPHMesh::gradientKernelFunction(Vector3f r, float h)
 {
     static float coeff = -945.f / (32.f * PI * powf(h, 9));
     float distance = r.norm();

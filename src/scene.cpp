@@ -22,8 +22,9 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationG());
     configurations.push_back(setupConfigurationH());
     configurations.push_back(setupConfigurationI());
-    configurations.push_back(setupConfigurationJ());
+    //configurations.push_back(setupConfigurationJ());
     configurations.push_back(setupConfigurationK());
+    configurations.push_back(setupConfigurationL());
     currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
@@ -493,6 +494,34 @@ Configuration* Scene::setupConfigurationK()
     cuboidA->needCoef = true;
 
     SPHMesh* cuboidB = new SPHMesh("CubeB", "../resources/models/sceneK/cuboidB.sph", colourB);
+    cuboidB->gravityAffected = true;
+    cuboidB->needCoef = true;
+
+    configuration->simulatedObjects.push_back(cuboidA);
+    configuration->simulatedObjects.push_back(cuboidB);
+
+    setupEstimatePositionOffsets(configuration);
+
+    buildSPHDeformationConstraints(configuration, cuboidA);
+    buildSPHDeformationConstraints(configuration, cuboidB);
+
+    return configuration;
+}
+
+Configuration* Scene::setupConfigurationL()
+{
+    Configuration* configuration = new Configuration();
+
+    addPlaneToConfiguration(configuration);
+
+    Vector3f colourA = { 0.0f,1.0f,0.f };
+    Vector3f colourB = { 1.0f,0.0f,0.f };
+
+    SPHMesh* cuboidA = new SPHMesh("CubeA", "../resources/models/sceneL/cuboidA.sph", colourA);
+    cuboidA->gravityAffected = true;
+    cuboidA->needCoef = true;
+
+    SPHMesh* cuboidB = new SPHMesh("CubeB", "../resources/models/sceneL/cuboidB.sph", colourB);
     cuboidB->gravityAffected = true;
     cuboidB->needCoef = true;
 

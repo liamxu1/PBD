@@ -277,10 +277,12 @@ private:
     // ----each line with a int and a float representing the index and collision radius
     void parseSphFile(string filename);
 
-    void createKernelInfo();
+    bool createKernelInfo();
+    void adjustKernelThreshold();
 
-    static float kernelFunction(Vector3f r);
-    static Vector3f gradientKernelFunction(Vector3f r);
+    float h = KERNEL_FUNCTION_THRESHOLD;
+    static float kernelFunction(Vector3f r, float h);
+    static Vector3f gradientKernelFunction(Vector3f r, float h);
 
 };
 #endif //POSITIONBASEDDYNAMICS_MESH_HPP
