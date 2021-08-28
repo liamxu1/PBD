@@ -26,6 +26,7 @@ Scene::Scene() {
     configurations.push_back(setupConfigurationK());
     configurations.push_back(setupConfigurationL());
     configurations.push_back(setupConfigurationM());
+    //configurations.push_back(setupConfigurationN());
     currentConfiguration = configurations[INITIAL_SCENE_INDEX];
 }
 
@@ -626,6 +627,34 @@ Configuration* Scene::setupConfigurationM()
     buildSPHDeformationConstraints(configuration, cuboid);
 
     buildTwoWayCouplingConstraints(configuration, cuboid);
+
+    return configuration;
+}
+
+Configuration* Scene::setupConfigurationN()
+{
+    Configuration* configuration = new Configuration();
+
+    addPlaneToConfiguration(configuration);
+
+    Vector3f colourA = { 0.0f,1.0f,0.f };
+    Vector3f colourB = { 1.0f,0.0f,0.f };
+
+    SPHMesh* ball = new SPHMesh("Ball", "../resources/models/sceneN/ball.sph", colourA);
+    ball->gravityAffected = true;
+    ball->needCoef = true;
+
+    SPHMesh* cuboidB = new SPHMesh("CubeB", "../resources/models/sceneN/cuboidB.sph", colourB);
+    cuboidB->gravityAffected = true;
+    cuboidB->needCoef = true;
+
+    configuration->simulatedObjects.push_back(ball);
+    configuration->simulatedObjects.push_back(cuboidB);
+
+    setupEstimatePositionOffsets(configuration);
+
+    buildSPHDeformationConstraints(configuration, ball);
+    buildSPHDeformationConstraints(configuration, cuboidB);
 
     return configuration;
 }

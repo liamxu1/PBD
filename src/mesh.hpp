@@ -18,7 +18,7 @@ const int XMOVE = 4, YMOVE = 2, ZMOVE = 1;
 using namespace std;
 using namespace Eigen;
 
-const float KERNEL_FUNCTION_THRESHOLD = 0.3f;
+const float KERNEL_FUNCTION_THRESHOLD = 0.1f;
 const bool SHOW_PROCEDURE_INFO = false;
 const bool SHOW_MESH_INFO = false;
 

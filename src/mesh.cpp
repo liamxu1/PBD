@@ -564,6 +564,9 @@ SPHMesh::SPHMesh(const char* name, string filename, Vector3f colour, float inver
         adjustKernelThreshold();
     }
 
+    adjustKernelThreshold();
+    createKernelInfo();
+
     backupCoefData = { poisonRatio,YoungModulus };
 }
 
