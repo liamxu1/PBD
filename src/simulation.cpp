@@ -148,6 +148,12 @@ void Simulation::simulate(Configuration *configuration) {
     for (Mesh* mesh : configuration->simulatedObjects) {
         #pragma omp parallel for
         for (int i = 0; i < mesh->numVertices; i++) {
+
+            if (particleSleeping && (configuration->estimatePositions[mesh->estimatePositionsOffset + i] - mesh->vertices[i]).norm() < SLEEPING_THRESHOLD)
+            {
+                configuration->estimatePositions[mesh->estimatePositionsOffset + i] = mesh->vertices[i];
+            }
+
             if (showStatus) cout << i + mesh->estimatePositionsOffset << ":\nVelocity:\t";
             mesh->velocities[i] = (configuration->estimatePositions[mesh->estimatePositionsOffset + i] - mesh->vertices[i]) / timeStep;
             if (showStatus) cout << mesh->velocities[i][0] << ' ' << mesh->velocities[i][1] << ' ' << mesh->velocities[i][2] << "\nPosition:\t";
@@ -361,11 +367,15 @@ void Simulation::renderGUI() {
     ImGui::Text("Damp Factor");
     ImGui::SliderFloat("##dampFactor", &dampFactor, 0.0f, 0.2f, "%.3f");
 
-    ImGui::Text("\nDampType");
+    ImGui::Text("DampType");
     ImGui::Combo("##dampType", &dampType, "None\0Simple\0Rotate\0Extended(in XPBD only)\0\0");
 
     ImGui::Text("ModelType");
     ImGui::Combo("##modelType", &constitutiveModelType, "StVK model\0Neo Hookean model\0\0");
+
+    ImGui::Text("Particle Sleeping");
+    ImGui::SameLine();
+    ImGui::Checkbox("##particleSleeping", &particleSleeping);
 
     ImGui::End();
 

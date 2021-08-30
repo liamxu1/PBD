@@ -10,6 +10,8 @@
 #include <scene.hpp>
 #include <constraint.hpp>
 
+const float SLEEPING_THRESHOLD = 1e-5;
+
 class Simulation {
 
     float COLLISION_THRESHOLD = 0.1f;
@@ -77,6 +79,8 @@ private:
     string warningMessage;
 
     int currentSceneIndex = INITIAL_SCENE_INDEX;
+
+    bool particleSleeping = true;
 };
 
 #endif //POSITIONBASEDDYNAMICS_SIMULATION_HPP
