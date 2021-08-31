@@ -64,6 +64,8 @@ struct Params {
     PBDType type = PBDType::none;
     ConstitutiveMaterialModel modelType = ConstitutiveMaterialModel::NeoHookeanModel;
 
+    bool useFriction;
+    float staticFrictionCoef, kineticFrictionCoef;
 };
 
 class Constraint {
@@ -143,6 +145,11 @@ public:
 
     Vector3f normal;
 
+    // return pairs of collision vertices, make the index on the second position less than 0 if that should be unmovable
+    virtual vector<pair<int, int>> CollisionVertexIndices() = 0;
+    bool isCollisionHappened = false;
+
+    void commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef);
 };
 
 class TetrahedralConstraint : public Constraint {
@@ -168,6 +175,8 @@ public:
     void project(Configuration* configuration, Params params);
 
     Vector3f position;
+
+    vector<pair<int, int>> CollisionVertexIndices() { return { pair<int,int>(indices[0],-1) }; }
 };
 
 class TriangleCollisionConstraint : public CollisionConstraint {
@@ -181,6 +190,7 @@ public:
 
     float height;
 
+    vector<pair<int, int>> CollisionVertexIndices() { return { pair<int,int>(indices[0],-1),pair<int,int>(indices[0],-1),pair<int,int>(indices[0],-1) }; }
 };
 
 class PointCollisionConstraint : public CollisionConstraint {
@@ -193,6 +203,8 @@ public:
     void project(Configuration* configuration, Params params);
 
     float distance;
+
+    vector<pair<int, int>> CollisionVertexIndices() { return { pair<int,int>(indices[0],indices[1]) }; }
 };
 
 class SPHDeformationConstraint : public Constraint

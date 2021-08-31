@@ -486,6 +486,10 @@ void StaticCollisionConstraint::project(Configuration* configuration, Params par
     if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
     vertex += displacement;
     if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
+
+    isCollisionHappened = true;
+    if(params.useFriction)
+        commonFrictionProjecting(configuration, -pointToPosition.dot(normal), params.staticFrictionCoef, params.kineticFrictionCoef);
 }
 
 void TriangleCollisionConstraint::project(Configuration* configuration, Params params) {
@@ -522,6 +526,10 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     vector<Vector3f> partialDerivatives = { normal,dc_p1,dc_p2,dc_p3 };
 
     commonOnProjectNormal(configuration, params.solverIterations, c, partialDerivatives);
+
+    isCollisionHappened = true;
+    if (params.useFriction)
+        commonFrictionProjecting(configuration, -c, params.staticFrictionCoef, params.kineticFrictionCoef);
 }
 
 void PointCollisionConstraint::project(Configuration* configuration, Params params) {
@@ -546,6 +554,10 @@ void PointCollisionConstraint::project(Configuration* configuration, Params para
     vector<Vector3f> partialDerivatives = { n, -n };
     
     commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
+
+    isCollisionHappened = true;
+    if (params.useFriction)
+        commonFrictionProjecting(configuration, -a, params.staticFrictionCoef, params.kineticFrictionCoef);
 }
 
 pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, ConstitutiveMaterialModel modelType, float PoisonRatio, float YoungModulus)
@@ -724,4 +736,45 @@ void SPHDeformationConstraint::project(Configuration* configuration, Params para
         commonOnProjectNormal(configuration, params.solverIterations, phi, partialDerivatives);
     else if (params.type == PBDType::XPBD)
         commonOnProjectExtended(configuration, params.timeStep, phi, partialDerivatives, 1e-5);
+}
+
+void CollisionConstraint::commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef)
+{
+    for (auto& pair : this->CollisionVertexIndices())
+    {
+        int i = pair.first, j = pair.second;
+        if (j > 0)
+        {
+            Vector3f relativeDisplacement = (configuration->estimatePositions[i] - configuration->currentPositions[i]) - (configuration->estimatePositions[j] - configuration->currentPositions[j]);
+            Vector3f tangentialRelativeDisplacement = relativeDisplacement - relativeDisplacement.dot(normal) * normal;
+            float tangentialNorm = tangentialRelativeDisplacement.norm();
+
+            float wi = configuration->inverseMasses[i], wj = configuration->inverseMasses[j];
+            Vector3f dxi = Vector3f::Zero();
+            if (tangentialNorm < staticFrictionCoef * penetrationDepth)
+            {
+                dxi = wi / (wi + wj) * tangentialRelativeDisplacement;
+            }
+            else
+                dxi = wi / (wi + wj) * tangentialRelativeDisplacement * min<float>(1.f, kineticFrictionCoef * penetrationDepth / tangentialNorm);
+
+            configuration->estimatePositions[i] -= dxi;
+            configuration->estimatePositions[j] += wj / (wi + wj) * dxi;
+        }
+        else
+        {
+            Vector3f relativeDisplacement = configuration->estimatePositions[i] - configuration->currentPositions[i];
+            Vector3f tangentialRelativeDisplacement = relativeDisplacement - relativeDisplacement.dot(normal) * normal;
+            float tangentialNorm = tangentialRelativeDisplacement.norm();
+
+            Vector3f dxi = Vector3f::Zero();
+            if (tangentialNorm < staticFrictionCoef * penetrationDepth)
+            {
+                dxi = tangentialRelativeDisplacement;
+            }
+            else
+                dxi = tangentialRelativeDisplacement * min<float>(1.f, kineticFrictionCoef * penetrationDepth / tangentialNorm);
+            configuration->estimatePositions[i] -= dxi;
+        }
+    }
 }

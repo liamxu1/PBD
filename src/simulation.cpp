@@ -130,6 +130,10 @@ void Simulation::simulate(Configuration *configuration) {
         break;
     }
 
+    params.useFriction = friction;
+    params.staticFrictionCoef = staticFrictionCoef;
+    params.kineticFrictionCoef = kineticFrictionCoef;
+
     // Project constraints iteratively
     for (int iteration = 0; iteration < solverIterations; iteration++) {
         //#pragma omp parallel for // Improves performance but constraint solving order is not deterministic
@@ -257,6 +261,9 @@ bool Simulation::planeIntersection(Vector3f rayOrigin, Vector3f rayDirection, fl
 }
 
 void Simulation::updateCollisionVelocities(CollisionConstraint* constraint) {
+
+    if (!constraint->isCollisionHappened) return;
+
     Mesh* mesh = constraint->mesh;
     int index = constraint->indices[0] - mesh->estimatePositionsOffset;
 
@@ -377,11 +384,29 @@ void Simulation::renderGUI() {
     ImGui::SameLine();
     ImGui::Checkbox("##particleSleeping", &particleSleeping);
 
+    ImGui::Text("Friction");
+    ImGui::SameLine();
+    ImGui::Checkbox("##friction", &friction);
+
     ImGui::End();
 
     if (adjustCoefficientWindow)
     {
         ImGui::Begin("Coefficient Editor");
+
+        if (friction)
+        {
+            ImGui::Text("Static Friction");
+            ImGui::SliderFloat("##staticFriction", &staticFrictionCoef, 0.0f, 1.0f);
+
+            ImGui::Text("Kinetic Friction");
+            ImGui::SliderFloat("##kineticFriction", &kineticFrictionCoef, 0.0f, 1.0f);
+
+            ImGui::Text("\n");
+            ImGui::Separator();
+            ImGui::Text("\n");
+        }
+
         for (auto &mesh : scene->currentConfiguration->simulatedObjects)
         {
             if (!mesh->needCoef) continue;

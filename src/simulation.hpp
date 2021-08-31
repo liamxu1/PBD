@@ -32,6 +32,9 @@ public:
     float windSpeed = 1.5f;
     float dampFactor = 0.01f;
 
+    float staticFrictionCoef = 0.5f;
+    float kineticFrictionCoef = 0.4f;
+
     bool wireframe = true;
     
     /// <summary>
@@ -81,6 +84,7 @@ private:
     int currentSceneIndex = INITIAL_SCENE_INDEX;
 
     bool particleSleeping = true;
+    bool friction = false;
 };
 
 #endif //POSITIONBASEDDYNAMICS_SIMULATION_HPP
