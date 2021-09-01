@@ -674,8 +674,6 @@ void Scene::setupEstimatePositionOffsets(Configuration* configuration) {
     for (Mesh* mesh : configuration->simulatedObjects) {
         mesh->estimatePositionsOffset = totalNumVertices;
         totalNumVertices += mesh->numVertices;
-
-        for (int i = 0; i < mesh->numVertices; i++) configuration->inverseMasses.push_back(mesh->inverseMass[i]);
     }
 
     configuration->estimatePositions.resize((size_t) totalNumVertices, Vector3f::Zero());

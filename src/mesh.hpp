@@ -94,7 +94,7 @@ enum class MeshBaseType
 class Mesh {
 
 public:
-    Mesh(const char* name, MeshType type, MeshBaseType baseType) :meshName(name), meshType(type),meshBaseType(baseType) {}
+    Mesh(const char* name, MeshType type, MeshBaseType baseType, float mass) :meshName(name), meshType(type), meshBaseType(baseType), mass(mass) {}
     virtual ~Mesh() = 0 {}
 
     void reset();
@@ -102,6 +102,7 @@ public:
     void translate(Vector3f translate);
     void dampVelocity(float kDamp = 0.1f, int type = 1);
     virtual void updateCoefs() {}
+    void updateInverseMasses();
 
     string meshName;
     MeshType meshType;
@@ -116,6 +117,8 @@ public:
     vector<Vector3f> vertices;
     vector<Vector3f> velocities;
     vector<float> inverseMass;
+    float mass;
+    bool massChanged = false;
     int estimatePositionsOffset = -1;
 
     // Simulation fields
@@ -146,7 +149,7 @@ protected:
 class LineBasedMesh : public Mesh{
 
 public:
-    LineBasedMesh(const char* name, MeshType type) :Mesh(name, type, MeshBaseType::line) {}
+    LineBasedMesh(const char* name, MeshType type, float mass) :Mesh(name, type, MeshBaseType::line, mass) {}
     virtual ~LineBasedMesh() = 0 {}
     virtual void updateCoefs(){}
     
@@ -221,7 +224,7 @@ private:
 class PointBasedMesh : public Mesh
 {
 public:
-    PointBasedMesh(const char* name, MeshType type) : Mesh(name, type, MeshBaseType::point) {}
+    PointBasedMesh(const char* name, MeshType type, float mass) : Mesh(name, type, MeshBaseType::point, mass) {}
     virtual ~PointBasedMesh() = 0 {}
 
     virtual void render(Camera* camera, Matrix4f transform);

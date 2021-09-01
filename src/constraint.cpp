@@ -9,9 +9,30 @@
 const float SPH_SELF_COLLISION_DETECTION_THRESHOLD = 5.0f;
 
 void Constraint::preCompute(Configuration* configuration) {
-    inverseMasses.resize(cardinality);
-    for (int i = 0; i < cardinality; i++)
-        inverseMasses[i] = configuration->inverseMasses[indices[i]];
+    if (inverseMasses.empty())
+        inverseMasses.resize(cardinality);
+    updateInversedMasses();
+}
+
+void Constraint::updateInversedMasses()
+{
+    if (relatedMesh == nullptr)
+    {
+        for (int i = 0; i < cardinality; i++)
+        {
+            inverseMasses[i] = mesh->inverseMass[indices[i] - mesh->estimatePositionsOffset];
+        }
+    }
+    else
+    {
+        // only collision / coupling
+
+        inverseMasses[0] = mesh->inverseMass[indices[0] - mesh->estimatePositionsOffset];
+        for (int i = 1; i < cardinality; i++)
+        {
+            inverseMasses[i] = relatedMesh->inverseMass[indices[i] - relatedMesh->estimatePositionsOffset];
+        }
+    }
 }
 
 void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float>& coeffs)
@@ -190,7 +211,7 @@ void buildTwoWayCouplingConstraints(Configuration* configuration, Mesh* meshA) {
 }
 
 void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, Vector3f target) {
-    configuration->inverseMasses[index + mesh->estimatePositionsOffset] = EPSILON;
+
     mesh->inverseMass[index] = EPSILON;
 
     Constraint* constraint = new FixedConstraint(mesh, 1, target);
@@ -242,6 +263,7 @@ CollisionConstraint* buildTriangleCollisionConstraint(Mesh *mesh, int vertexInde
     constraint->indices.push_back(indexB + secondMesh->estimatePositionsOffset);
     constraint->indices.push_back(indexC + secondMesh->estimatePositionsOffset);
 
+    constraint->relatedMesh = secondMesh;
     return constraint;
 }
 
@@ -740,8 +762,10 @@ void SPHDeformationConstraint::project(Configuration* configuration, Params para
 
 void CollisionConstraint::commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef)
 {
-    for (auto& pair : this->CollisionVertexIndices())
+    auto info = this->CollisionVertexIndices();
+    for (int infoIndex = 0; infoIndex < info.size(); infoIndex++)
     {
+        auto pair = info[infoIndex];
         int i = pair.first, j = pair.second;
         if (j > 0)
         {
@@ -749,7 +773,7 @@ void CollisionConstraint::commonFrictionProjecting(Configuration* configuration,
             Vector3f tangentialRelativeDisplacement = relativeDisplacement - relativeDisplacement.dot(normal) * normal;
             float tangentialNorm = tangentialRelativeDisplacement.norm();
 
-            float wi = configuration->inverseMasses[i], wj = configuration->inverseMasses[j];
+            float wi = inverseMasses[0], wj = inverseMasses[infoIndex + 1];
             Vector3f dxi = Vector3f::Zero();
             if (tangentialNorm < staticFrictionCoef * penetrationDepth)
             {

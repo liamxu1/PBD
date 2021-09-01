@@ -54,6 +54,7 @@ void Simulation::simulate(Configuration *configuration) {
 
     for (auto mesh : configuration->simulatedObjects) {
         if (mesh->needCoef) mesh->updateCoefs();
+        mesh->updateInverseMasses();
     }
 
     // Apply external forces
@@ -138,12 +139,12 @@ void Simulation::simulate(Configuration *configuration) {
     for (int iteration = 0; iteration < solverIterations; iteration++) {
         //#pragma omp parallel for // Improves performance but constraint solving order is not deterministic
         for (int c = 0; c < configuration->constraints.size(); c++) {
-            configuration->constraints[c]->project(configuration, params);
+            configuration->constraints[c]->betterProject(configuration, params);
         }
 
         //#pragma omp parallel for // Improves performance but constraint solving order is not deterministic
         for (int c = 0; c < configuration->collisionConstraints.size(); c++) {
-            configuration->collisionConstraints[c]->project(configuration, params);
+            configuration->collisionConstraints[c]->betterProject(configuration, params);
         }
     }
 
@@ -411,6 +412,13 @@ void Simulation::renderGUI() {
         {
             if (!mesh->needCoef) continue;
             ImGui::Text(mesh->meshName.c_str());
+            
+            ImGui::Text("Mass");
+            if (ImGui::SliderFloat((string("##mass") + mesh->meshName).c_str(), &mesh->mass, 0.1f, 5.f))
+            {
+                mesh->massChanged = true;
+            }
+
             if (type == 0 && mesh->meshType == MeshType::triangular)
             {
                 ImGui::Text("Stretch Factor");

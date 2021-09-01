@@ -25,7 +25,7 @@ Matrix3f CrossMat(Vector3f vec)
 }
 
 TriangularMesh::TriangularMesh(const char* name, string filename, Vector3f colour, float inverseMass)
-    :LineBasedMesh(name, MeshType::triangular)
+    :LineBasedMesh(name, MeshType::triangular, (inverseMass != 0) ? 1.0f / inverseMass : 1.0 / EPSILON)
 {
 
     this->colour = colour;
@@ -291,6 +291,19 @@ void Mesh::dampVelocity(float kDamp, int type)
     }
 }
 
+void Mesh::updateInverseMasses()
+{
+    if (!massChanged) return;
+
+    for (int i = 0; i < numVertices; i++)
+    {
+        if (inverseMass[i] > EPSILONTHRESHOLD)
+            inverseMass[i] = 1.0f / mass;
+    }
+
+    massChanged = false;
+}
+
 void TriangularMesh::parseObjFile(string filename) {
 
     // Attempt to open an input stream to the file
@@ -377,7 +390,7 @@ void TriangularMesh::parseObjFile(string filename) {
 }
 
 TetrahedralMesh::TetrahedralMesh(const char* name, string filename, Vector3f colour, float inverseMass)
-    : LineBasedMesh(name, MeshType::tetrahedral)
+    : LineBasedMesh(name, MeshType::tetrahedral, (inverseMass != 0) ? 1.0f / inverseMass : 1.0 / EPSILON)
 {
     this->colour = colour;
     parseTetFile(filename);
@@ -480,7 +493,7 @@ void TetrahedralMesh::insertTriangle(SimpleTriangle& triangle)
     triangles.push_back(triangle);
 }
 
-SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, Vector3f colour, size_t pos) : PointBasedMesh(name, MeshType::singlePoint)
+SinglePointMesh::SinglePointMesh(const char* name, Vector3f position, Vector3f colour, size_t pos) : PointBasedMesh(name, MeshType::singlePoint, 1.0 / EPSILON)
 {
     this->colour = colour;
 
@@ -538,7 +551,7 @@ void PointBasedMesh::render(Camera* camera, Matrix4f transform)
 }
 
 SPHMesh::SPHMesh(const char* name, string filename, Vector3f colour, float inverseMass)
-    : PointBasedMesh(name, MeshType::SPH)
+    : PointBasedMesh(name, MeshType::SPH, (inverseMass != 0) ? 1.0f / inverseMass : 1.0 / EPSILON)
 {
     this->colour = colour;
 

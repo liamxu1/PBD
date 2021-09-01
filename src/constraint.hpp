@@ -75,6 +75,10 @@ public:
         mesh(mesh), cardinality(cardinality), showStatus(showStatus), useMeshCoef(useMeshCoef){}
     void preCompute(Configuration* configuration);
     virtual void project(Configuration* configuration, Params params) {}
+    virtual void betterProject(Configuration* configuration, Params params) {
+        preCompute(configuration);
+        project(configuration, params);
+    }
 
     int cardinality;
     vector<int> indices;
@@ -96,6 +100,8 @@ protected:
     void commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance = 1e-7, float dampCompliance = 0.f);
 
     bool useMeshCoef;
+
+    virtual void updateInversedMasses();
 };
 
 class FixedConstraint : public Constraint {
