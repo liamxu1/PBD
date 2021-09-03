@@ -78,7 +78,6 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
 
 void Constraint::commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor)
 {
-    if (showStatus) cout << typeNameString.at(type) << ":\n";
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
     {
@@ -87,6 +86,7 @@ void Constraint::commonOnProjectNormal(Configuration* configuration, int iterati
 
     if (wSum < EPSILONTHRESHOLD) return;
 
+    if (showStatus) cout << typeNameString.at(type) << ":\n";
     float s = C / wSum;
     float kNew = 1.0f - pow(1.0f - factor, 1.0f / iteration);
     for (int i = 0; i < cardinality; i++)
@@ -102,7 +102,6 @@ void Constraint::commonOnProjectNormal(Configuration* configuration, int iterati
 
 void Constraint::commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance, float dampCompliance)
 {
-    if (showStatus) cout << typeNameString.at(type) << ":\n";
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
     {
@@ -111,6 +110,7 @@ void Constraint::commonOnProjectExtended(Configuration* configuration, float tim
 
     if (wSum < EPSILONTHRESHOLD) return;
 
+    if (showStatus) cout << typeNameString.at(type) << ":\n";
     vector<float> dlambda(cardinality, 0.f);
     float alpha = compliance / powf(timeStep, 2);
     float gamma = alpha * dampCompliance * timeStep;
