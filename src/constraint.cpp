@@ -86,18 +86,18 @@ void Constraint::commonOnProjectNormal(Configuration* configuration, int iterati
 
     if (wSum < EPSILONTHRESHOLD) return;
 
-    if (showStatus) cout << typeNameString.at(type) << ":\n";
+    if (showStatus) outStream << typeNameString.at(type) << ":\n";
     float s = C / wSum;
     float kNew = 1.0f - pow(1.0f - factor, 1.0f / iteration);
     for (int i = 0; i < cardinality; i++)
     {
         Vector3f& vertex = configuration->estimatePositions[indices[i]];
 
-        if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+        if (showStatus) outStream << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
         vertex -= kNew * s * inverseMasses[i] * partialDerivatives[i];
-        if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+        if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
     }
-    if (showStatus) cout << '\n';
+    if (showStatus) outStream << '\n';
 }
 
 void Constraint::commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance, float dampCompliance)
@@ -110,7 +110,7 @@ void Constraint::commonOnProjectExtended(Configuration* configuration, float tim
 
     if (wSum < EPSILONTHRESHOLD) return;
 
-    if (showStatus) cout << typeNameString.at(type) << ":\n";
+    if (showStatus) outStream << typeNameString.at(type) << ":\n";
     vector<float> dlambda(cardinality, 0.f);
     float alpha = compliance / powf(timeStep, 2);
     float gamma = alpha * dampCompliance * timeStep;
@@ -125,11 +125,11 @@ void Constraint::commonOnProjectExtended(Configuration* configuration, float tim
         configuration->lambda[indices[i]] += dlambda[i];
         Vector3f& vertex = configuration->estimatePositions[indices[i]];
 
-        if (showStatus) cout << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+        if (showStatus) outStream << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
         vertex += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
-        if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+        if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
     }
-    if (showStatus) cout << '\n';
+    if (showStatus) outStream << '\n';
 }
 
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
@@ -371,10 +371,10 @@ void FixedConstraint::project(Configuration* configuration, Params params) {
     }
     Vector3f& vertex = configuration->estimatePositions[indices[0]];
 
-    if (showStatus) cout << "Static collision:\n";
-    if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+    if (showStatus) outStream << "Static collision:\n";
+    if (showStatus) outStream << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
     vertex = target;
-    if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
+    if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
 }
 
 void DistanceConstraint::project(Configuration* configuration, Params params) {
@@ -496,7 +496,7 @@ void StaticCollisionConstraint::project(Configuration* configuration, Params par
     // Check if constraint is already satisfied
     if (pointToPosition.dot(normal) >= 0.0f) return;
 
-    if (showStatus) cout << "Static collision:\n";
+    if (showStatus) outStream << "Static collision:\n";
 
     float a = (p - position).dot(normal);
     Vector3f b = (p - position) / ((p - position).norm());
@@ -505,9 +505,9 @@ void StaticCollisionConstraint::project(Configuration* configuration, Params par
 
     Vector3f& vertex = configuration->estimatePositions[indices[0]];
 
-    if (showStatus) cout << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+    if (showStatus) outStream << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
     vertex += displacement;
-    if (showStatus) cout << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
+    if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
 
     isCollisionHappened = true;
     if(params.useFriction)

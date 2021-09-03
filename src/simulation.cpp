@@ -43,7 +43,7 @@ void Simulation::simulate(Configuration *configuration) {
 
     if (showStatus)
     {
-        cout << "\n-------------------------------\n";
+        outStream << "\n-------------------------------\n";
     }
 
     configuration->lambda.clear();
@@ -149,7 +149,7 @@ void Simulation::simulate(Configuration *configuration) {
     }
 
     // Update positions and velocities
-    if (showStatus) cout << "Overall:\n";
+    if (showStatus) outStream << "Overall:\n";
     for (Mesh* mesh : configuration->simulatedObjects) {
         #pragma omp parallel for
         for (int i = 0; i < mesh->numVertices; i++) {
@@ -159,11 +159,11 @@ void Simulation::simulate(Configuration *configuration) {
                 configuration->estimatePositions[mesh->estimatePositionsOffset + i] = mesh->vertices[i];
             }
 
-            if (showStatus) cout << i + mesh->estimatePositionsOffset << ":\nVelocity:\t";
+            if (showStatus) outStream << i + mesh->estimatePositionsOffset << ":\nVelocity:\t";
             mesh->velocities[i] = (configuration->estimatePositions[mesh->estimatePositionsOffset + i] - mesh->vertices[i]) / timeStep;
-            if (showStatus) cout << mesh->velocities[i][0] << ' ' << mesh->velocities[i][1] << ' ' << mesh->velocities[i][2] << "\nPosition:\t";
+            if (showStatus) outStream << mesh->velocities[i][0] << ' ' << mesh->velocities[i][1] << ' ' << mesh->velocities[i][2] << "\nPosition:\t";
             mesh->vertices[i] = configuration->estimatePositions[mesh->estimatePositionsOffset + i];
-            if (showStatus) cout << mesh->vertices[i][0] << ' ' << mesh->vertices[i][1] << ' ' << mesh->vertices[i][2] << "\n\n";
+            if (showStatus) outStream << mesh->vertices[i][0] << ' ' << mesh->vertices[i][1] << ' ' << mesh->vertices[i][2] << "\n\n";
         }
     }
 

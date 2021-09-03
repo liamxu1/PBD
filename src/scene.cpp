@@ -13,6 +13,7 @@ Scene::Scene() {
     camera = new Camera();
 
     // Setup scene configurations
+    //configurations.push_back(setupCollisionTestConfiguration());
     configurations.push_back(setupConfigurationA());
     configurations.push_back(setupConfigurationB());
     configurations.push_back(setupConfigurationC());
@@ -655,6 +656,33 @@ Configuration* Scene::setupConfigurationN()
 
     buildSPHDeformationConstraints(configuration, ball);
     buildSPHDeformationConstraints(configuration, cuboidB);
+
+    return configuration;
+}
+
+Configuration* Scene::setupCollisionTestConfiguration()
+{
+    Configuration* configuration = new Configuration();
+    addPlaneToConfiguration(configuration);
+
+    Vector3f colourA = { 0.0f,1.0f,0.0f };
+    Vector3f colourB = { 1.0f,0.0f,0.0f };
+
+    TetrahedralMesh* cubeA = new TetrahedralMesh("CubeA", "../resources/models/dynamicCollisionTestScene/cuboidA.tet", colourA);
+    cubeA->gravityAffected = true;
+    cubeA->needCoef = true;
+
+    TetrahedralMesh* cubeB = new TetrahedralMesh("CubeB", "../resources/models/dynamicCollisionTestScene/cuboidB.tet", colourB);
+    cubeB->gravityAffected = true;
+    cubeB->needCoef = true;
+
+    configuration->simulatedObjects.push_back(cubeA);
+    configuration->simulatedObjects.push_back(cubeB);
+
+    setupEstimatePositionOffsets(configuration);
+
+    buildTetrahedralConstraints(configuration, cubeA);
+    buildTetrahedralConstraints(configuration, cubeB);
 
     return configuration;
 }

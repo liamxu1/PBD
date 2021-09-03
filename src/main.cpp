@@ -2,7 +2,6 @@
 // Created by Jack Purvis
 //
 
-#include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -23,6 +22,8 @@ float mouseY = 0.0f;
 Simulation* simulation;
 
 bool resetStatus = false;
+
+std::ofstream outStream("../debug.log");
 
 void mouseMovedCallback(GLFWwindow* win, double xPos, double yPos) {
     float xChange =  (float) xPos - mouseX;
@@ -203,6 +204,7 @@ int main() {
     glfwTerminate();
 
     delete simulation;
+    outStream.close();
 
     return 0;
 }

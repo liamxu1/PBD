@@ -711,19 +711,19 @@ bool SPHMesh::createKernelInfo()
 
         if (SHOW_MESH_INFO)
         {
-            cout << "-------------------------------------\n";
-            cout << i << '\n';
-            cout << "-------------------------------------\n";
+            outStream << "-------------------------------------\n";
+            outStream << i << '\n';
+            outStream << "-------------------------------------\n";
             current = kernelInfos[i];
             while (current != nullptr)
             {
-                cout << current->index << '\n';
-                cout << current->kernel << '\n';
-                cout << current->gradientKernel[0] << '\t' << current->gradientKernel[1] << '\t' << current->gradientKernel[2] << '\n';
-                cout << current->correctedKernel[0] << '\t' << current->correctedKernel[1] << '\t' << current->correctedKernel[2] << '\n';
-                cout << current->correctedGradient[0] << '\t' << current->correctedGradient[1] << '\t' << current->correctedGradient[2] << '\n';
+                outStream << current->index << '\n';
+                outStream << current->kernel << '\n';
+                outStream << current->gradientKernel[0] << '\t' << current->gradientKernel[1] << '\t' << current->gradientKernel[2] << '\n';
+                outStream << current->correctedKernel[0] << '\t' << current->correctedKernel[1] << '\t' << current->correctedKernel[2] << '\n';
+                outStream << current->correctedGradient[0] << '\t' << current->correctedGradient[1] << '\t' << current->correctedGradient[2] << '\n';
                 current = current->next;
-                cout << '\n';
+                outStream << '\n';
             }
         }
     }

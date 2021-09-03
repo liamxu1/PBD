@@ -90,6 +90,7 @@ private:
     Configuration* setupConfigurationL();
     Configuration* setupConfigurationM();
     Configuration* setupConfigurationN();
+    Configuration* setupCollisionTestConfiguration();
     void addPlaneToConfiguration(Configuration* configuration);
     void setupEstimatePositionOffsets(Configuration* configuration);
 

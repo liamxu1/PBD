@@ -1,6 +1,9 @@
 #ifndef MAIN_HPP
 #define MAIN_HPP
 
+#include <iostream>
+#include <fstream>
+
 // Screen settings
 #define FULL_SCREEN false
 #define BORDERLESS false
@@ -21,5 +24,10 @@ const float PI = 3.14159f;
 
 // Paths
 static const char* SHADER_PATH = "resources/shaders/";
+
+const bool SHOW_PROCEDURE_INFO = false;
+const bool SHOW_MESH_INFO = false;
+
+extern std::ofstream outStream;
 
 #endif
