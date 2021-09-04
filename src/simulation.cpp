@@ -221,7 +221,7 @@ void Simulation::generateCollisionConstraints(Configuration* configuration, Mesh
             if (meshCollision && 0 < t && t * 0.5 <= COLLISION_THRESHOLD) {
                 SimpleTriangle triangle = dynamicMesh_->triangles[triangleIndex];
 
-                if ((dynamicMesh->vertices[triangle.v[0].p] - mesh->vertices[index]).dot(normal) > 0.0f) {
+                if ((dynamicMesh->vertices[triangle.v[0].p] - mesh->vertices[index]).dot(normal) < 0.0f) {
                     configuration->collisionConstraints.push_back(buildTriangleCollisionConstraint(mesh, index, normal, COLLISION_THRESHOLD, triangle.v[0].p, triangle.v[1].p, triangle.v[2].p, dynamicMesh));
                 }
                 else {
