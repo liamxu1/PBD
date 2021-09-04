@@ -102,6 +102,21 @@ void Simulation::simulate(Configuration *configuration) {
         }
     }
 
+    if (showStatus)
+    {
+        outStream << "\nCollision information:\n";
+        for (auto constraint : configuration->collisionConstraints)
+        {
+            outStream << typeNameString.at(constraint->type) << ":\t";
+            for (auto index : constraint->indices)
+            {
+                outStream << index << '\t';
+            }
+            outStream << '\n';
+        }
+        outStream << '\n';
+    }
+
     // Setup constraint parameters
     Params params;
     params.solverIterations = solverIterations;
