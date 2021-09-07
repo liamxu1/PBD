@@ -120,17 +120,10 @@ void Simulation::simulate(Configuration *configuration) {
     // Setup constraint parameters
     Params params;
     params.solverIterations = solverIterations;
-    switch (type)
-    {
-    case 0:
-        params.type = PBDType::normalPBD;
-        break;
-    case 1:
-        params.type = PBDType::XPBD;
-        break;
-    default:
-        break;
-    }
+
+    if (type == 1) params.type = PBDType::XPBD;
+    else params.type = PBDType::normalPBD;
+
     params.timeStep = timeStep;
     params.useXPBDDamp = (dampType == 3);
 
@@ -152,16 +145,63 @@ void Simulation::simulate(Configuration *configuration) {
 
     // Project constraints iteratively
     int constraintSize = configuration->constraints.size();
+    int controllingConstraintSize = configuration->controllingConstraints.size();
     int collisionConstraintSize = configuration->collisionConstraints.size();
-    for (int iteration = 0; iteration < solverIterations; iteration++) {
-        #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
-        for (int c = 0; c < constraintSize; c++) {
-            configuration->constraints[c]->project(configuration, params);
-        }
 
-        #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
-        for (int c = 0; c < collisionConstraintSize; c++) {
-            configuration->collisionConstraints[c]->project(configuration, params);
+    if (type == 2) //Jacobi
+    {
+        int numPositions = configuration->estimatePositions.size();
+        vector<Vector3f> totalDisplacements(numPositions, Vector3f::Zero());
+        for (int iteration = 0; iteration < solverIterations; iteration++)
+        {
+            #pragma omp parallel for
+            for (int c = 0; c < constraintSize; c++){
+                auto constraint = configuration->constraints[c];
+                vector<Vector3f> displacements;
+                if (constraint->projectValue(configuration, params, displacements))
+                {
+                    for (int i = 0; i < constraint->cardinality; i++)
+                    {
+                        totalDisplacements[constraint->indices[i]] += displacements[i];
+                    }
+                }
+            }
+            #pragma omp parallel for
+            for (int i = 0; i < numPositions; i++)
+            {
+                //printf("%d\t%f\t%f\t%f\n", i, totalDisplacements[i][0], totalDisplacements[i][1], totalDisplacements[i][2]);
+                configuration->estimatePositions[i] += totalDisplacements[i] / constraintSize;
+            }
+
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < controllingConstraintSize; c++) {
+                configuration->controllingConstraints[c]->project(configuration, params);
+            }
+
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < collisionConstraintSize; c++) {
+                configuration->collisionConstraints[c]->project(configuration, params);
+            }
+        }
+    }
+
+    else
+    {
+        for (int iteration = 0; iteration < solverIterations; iteration++) {
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < constraintSize; c++) {
+                configuration->constraints[c]->project(configuration, params);
+            }
+
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < controllingConstraintSize; c++) {
+                configuration->controllingConstraints[c]->project(configuration, params);
+            }
+
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < collisionConstraintSize; c++) {
+                configuration->collisionConstraints[c]->project(configuration, params);
+            }
         }
     }
 
@@ -387,7 +427,7 @@ void Simulation::renderGUI() {
     ImGui::Checkbox("##wireframe", &wireframe);
 
     ImGui::Text("PBDType");
-    ImGui::Combo("##PBDType", &type, "Normal\0XPBD\0\0");
+    ImGui::Combo("##PBDType", &type, "Normal\0XPBD\0Jacobi\0\0");
 
     ImGui::Text("Damp Factor");
     ImGui::SliderFloat("##dampFactor", &dampFactor, 0.0f, 0.2f, "%.3f");

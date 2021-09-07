@@ -240,7 +240,7 @@ void buildFixedConstraint(Configuration* configuration, Mesh* mesh, int index, V
     Constraint* constraint = new FixedConstraint(mesh, 1, target);
     constraint->indices.push_back(index + mesh->estimatePositionsOffset);
 
-    configuration->constraints.push_back(constraint);
+    configuration->controllingConstraints.push_back(constraint);
 }
 
 void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, float distance, bool useMeshCoef, Mesh* secondMesh) {
@@ -258,7 +258,10 @@ void buildDistanceConstraint(Configuration* configuration, Mesh* mesh, int index
         constraint->relatedMesh = secondMesh;
     constraint->preCompute(configuration);
 
-    configuration->constraints.push_back(constraint);
+    if (distance == 0.f)
+        configuration->controllingConstraints.push_back(constraint);
+    else
+        configuration->constraints.push_back(constraint);
 }
 
 void buildBendConstraint(Configuration* configuration, Mesh* mesh, int indexA, int indexB, int indexC, int indexD, float angle) {

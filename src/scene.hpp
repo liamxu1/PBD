@@ -31,6 +31,7 @@ struct Configuration {
     vector<Vector3f> estimatePositions;
     vector<Vector3f> currentPositions;
     vector<Constraint*> constraints;
+    vector<Constraint*> controllingConstraints;
     vector<CollisionConstraint*> collisionConstraints;
 
     vector<float> lambda; //for xpbd

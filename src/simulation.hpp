@@ -41,6 +41,7 @@ public:
     /// type: PBD type
     /// 0: Normal PBD
     /// 1: XPBD
+    /// 2: Jacobi
     /// </summary>
     int type = 0;
 
