@@ -151,15 +151,17 @@ void Simulation::simulate(Configuration *configuration) {
     params.kineticFrictionCoef = kineticFrictionCoef;
 
     // Project constraints iteratively
+    int constraintSize = configuration->constraints.size();
+    int collisionConstraintSize = configuration->collisionConstraints.size();
     for (int iteration = 0; iteration < solverIterations; iteration++) {
         #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
-        for (int c = 0; c < configuration->constraints.size(); c++) {
-            configuration->constraints[c]->betterProject(configuration, params);
+        for (int c = 0; c < constraintSize; c++) {
+            configuration->constraints[c]->project(configuration, params);
         }
 
         #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
-        for (int c = 0; c < configuration->collisionConstraints.size(); c++) {
-            configuration->collisionConstraints[c]->betterProject(configuration, params);
+        for (int c = 0; c < collisionConstraintSize; c++) {
+            configuration->collisionConstraints[c]->project(configuration, params);
         }
     }
 

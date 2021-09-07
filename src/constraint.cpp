@@ -14,6 +14,33 @@ void Constraint::preCompute(Configuration* configuration) {
     updateInversedMasses();
 }
 
+bool Constraint::projectValue(Configuration* configuration, Params params, vector<Vector3f>& displacements)
+{
+    preCompute(configuration);
+    displacements.clear();
+    displacements = getProjectValue(configuration, params);
+    if (displacements.size() == 0) return false;
+    else return true;
+}
+
+void Constraint::project(Configuration* configuration, Params params)
+{
+    preCompute(configuration);
+    vector<Vector3f>& updatePositions = getProjectValue(configuration, params);
+    if (updatePositions.size() == 0) return;
+
+    if (showStatus) outStream << typeNameString.at(type) << ":\n";
+    for (int i = 0; i < cardinality; i++)
+    {
+        Vector3f& vertex = configuration->estimatePositions[indices[i]];
+        if (showStatus) outStream << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
+        vertex += updatePositions[i];
+        if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+    }
+
+    if (showStatus) outStream << '\n';
+}
+
 void Constraint::updateInversedMasses()
 {
     if (relatedMesh == nullptr)
@@ -35,7 +62,7 @@ void Constraint::updateInversedMasses()
     }
 }
 
-void Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float>& coeffs)
+vector<Vector3f> Constraint::commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float>& coeffs)
 {
     switch (params.type)
     {
@@ -43,12 +70,12 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
     {
         if (coeffs.size() == 0)
         {
-            commonOnProjectNormal(configuration, params.solverIterations, C, partialDerivatives);
+            return commonOnProjectNormal(configuration, params.solverIterations, C, partialDerivatives);
         }
         else
         {
             assert(coeffs.size() == 1);
-            commonOnProjectNormal(configuration, params.solverIterations, C, partialDerivatives, coeffs[0]);
+            return commonOnProjectNormal(configuration, params.solverIterations, C, partialDerivatives, coeffs[0]);
         }
         break;
     }
@@ -56,12 +83,12 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
     case PBDType::XPBD:
     {
         if (coeffs.size() == 0) {
-            commonOnProjectExtended(configuration, params.timeStep, C, partialDerivatives);
+            return commonOnProjectExtended(configuration, params.timeStep, C, partialDerivatives);
         }
         else
         {
             assert(coeffs.size() == 2);
-            commonOnProjectExtended(configuration, params.timeStep, C, partialDerivatives, coeffs[0], coeffs[1]);
+            return commonOnProjectExtended(configuration, params.timeStep, C, partialDerivatives, coeffs[0], coeffs[1]);
         }
         break;
     }
@@ -70,13 +97,14 @@ void Constraint::commonOnProject(Configuration* configuration, Params params, fl
     {
         string currentConstraintType = typeNameString.at(type);
         cout << currentConstraintType + static_cast<string>(" projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n");
+        return vector<Vector3f>();
         break;
     }
 
     }
 }
 
-void Constraint::commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor)
+vector<Vector3f> Constraint::commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor)
 {
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
@@ -84,23 +112,20 @@ void Constraint::commonOnProjectNormal(Configuration* configuration, int iterati
         wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
     }
 
-    if (wSum < EPSILONTHRESHOLD) return;
+    if (wSum < EPSILONTHRESHOLD) return vector<Vector3f>();
 
-    if (showStatus) outStream << typeNameString.at(type) << ":\n";
     float s = C / wSum;
     float kNew = 1.0f - pow(1.0f - factor, 1.0f / iteration);
+
+    vector<Vector3f> result(cardinality);
     for (int i = 0; i < cardinality; i++)
     {
-        Vector3f& vertex = configuration->estimatePositions[indices[i]];
-
-        if (showStatus) outStream << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-        vertex -= kNew * s * inverseMasses[i] * partialDerivatives[i];
-        if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+        result[i] = -kNew * s * inverseMasses[i] * partialDerivatives[i];
     }
-    if (showStatus) outStream << '\n';
+    return result;
 }
 
-void Constraint::commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance, float dampCompliance)
+vector<Vector3f> Constraint::commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance, float dampCompliance)
 {
     float wSum = 0;
     for (int i = 0; i < cardinality; i++)
@@ -108,7 +133,7 @@ void Constraint::commonOnProjectExtended(Configuration* configuration, float tim
         wSum += inverseMasses[i] * partialDerivatives[i].squaredNorm();
     }
 
-    if (wSum < EPSILONTHRESHOLD) return;
+    if (wSum < EPSILONTHRESHOLD) return vector<Vector3f>();
 
     if (showStatus) outStream << typeNameString.at(type) << ":\n";
     vector<float> dlambda(cardinality, 0.f);
@@ -120,16 +145,14 @@ void Constraint::commonOnProjectExtended(Configuration* configuration, float tim
             - gamma * partialDerivatives[i].dot(configuration->estimatePositions[indices[i]] - configuration->currentPositions[indices[i]]))
             / ((1 + gamma) * wSum + alpha);
     }
+
+    vector<Vector3f> result(cardinality);
     for (int i = 0; i < cardinality; i++)
     {
         configuration->lambda[indices[i]] += dlambda[i];
-        Vector3f& vertex = configuration->estimatePositions[indices[i]];
-
-        if (showStatus) outStream << indices[i] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-        vertex += dlambda[i] * inverseMasses[i] * partialDerivatives[i];
-        if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << '\n';
+        result[i] = dlambda[i] * inverseMasses[i] * partialDerivatives[i];
     }
-    if (showStatus) outStream << '\n';
+    return result;
 }
 
 void buildEdgeConstraints(Configuration* configuration, TriangularMesh* mesh) {
@@ -363,26 +386,22 @@ TetrahedralConstraint* buildTetrahedralConstraint(Mesh* mesh, int indexA, int in
     return constraint;
 }
 
-void FixedConstraint::project(Configuration* configuration, Params params) {
+vector<Vector3f> FixedConstraint::getProjectValue(Configuration* configuration, Params params) {
     if (params.type == PBDType::none)
     {
         cout << "Fixed constraint projection not finished in this PBD type!\nYou may have faced incorrect simulation.\n\n";
-        return;
+        return vector<Vector3f>();
     }
-    Vector3f& vertex = configuration->estimatePositions[indices[0]];
 
-    if (showStatus) outStream << "Static collision:\n";
-    if (showStatus) outStream << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-    vertex = target;
-    if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
+    return { target - configuration->estimatePositions[indices[0]] };
 }
 
-void DistanceConstraint::project(Configuration* configuration, Params params) {
+vector<Vector3f> DistanceConstraint::getProjectValue(Configuration* configuration, Params params) {
     
     assert(cardinality == 2);
 
     float w1 = inverseMasses[0], w2 = inverseMasses[1];
-    if (w1 + w2 < EPSILONTHRESHOLD) return;
+    if (w1 + w2 < EPSILONTHRESHOLD) return vector<Vector3f>();
 
     Vector3f p1 = configuration->estimatePositions[indices[0]];
     Vector3f p2 = configuration->estimatePositions[indices[1]];
@@ -396,33 +415,33 @@ void DistanceConstraint::project(Configuration* configuration, Params params) {
     vector<float> coeffs;
     if (mesh->meshType == MeshType::triangular)
     {
-        if (params.type == PBDType::normalPBD)
-        {
-            if (useMeshCoef)
-                commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchFactor);
-            else
-                commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
-        }
-        else if (params.type == PBDType::XPBD)
+        if (params.type == PBDType::XPBD)
         {
             if (useMeshCoef)
             {
                 if (params.useXPBDDamp)
-                    commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance, dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
+                    return commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance, dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
                 else
-                    commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance);
+                    return commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchCompliance);
             }
             else
             {
-                commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives);
+                return commonOnProjectExtended(configuration, params.timeStep, a, partialDerivatives);
             }
+        }
+        else
+        {
+            if (useMeshCoef)
+                return commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->stretchFactor);
+            else
+                return commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
         }
     }
     else
-        commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
+        return commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
 }
 
-void BendConstraint::project(Configuration* configuration, Params params) {
+vector<Vector3f> BendConstraint::getProjectValue(Configuration* configuration, Params params) {
     assert(cardinality == 4);
 
     Vector3f p1 = configuration->estimatePositions[indices[0]];
@@ -438,7 +457,7 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     if (p2Xp3Norm < EPSILONTHRESHOLD || p2Xp4Norm < EPSILONTHRESHOLD)
     {
         //cout << "p2\n" << p2 << '\n' << "p3\n" << p3 << '\n' << "p4\n" << p4 << '\n';
-        return;
+        return vector<Vector3f>();
     }
 
     // Compute normals
@@ -460,61 +479,57 @@ void BendConstraint::project(Configuration* configuration, Params params) {
     vector<float> coeffs;
     if (mesh->meshType == MeshType::triangular)
     {
-        if (params.type == PBDType::normalPBD)
-        {
-            if (useMeshCoef)
-                commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendFactor);
-            else
-                commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives);
-        }
-        else if (params.type == PBDType::XPBD)
+        if (params.type == PBDType::XPBD)
         {
             if (useMeshCoef)
             {
                 if (params.useXPBDDamp)
-                    commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendCompliance, dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
+                    return commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendCompliance, dynamic_cast<TriangularMesh*>(mesh)->dampCompliance);
                 else
-                    commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendCompliance);
+                    return commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendCompliance);
             }
             else
             {
-                commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives);
+                return commonOnProjectExtended(configuration, params.timeStep, acosf(d) - angle, partialDerivatives);
             }
+        }
+        else
+        {
+            if (useMeshCoef)
+                return commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives, dynamic_cast<TriangularMesh*>(mesh)->bendFactor);
+            else
+                return commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives);
         }
     }
     else
-        commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives);
+        return commonOnProjectNormal(configuration, params.solverIterations, acosf(d) - angle, partialDerivatives);
 
 }
 
-void StaticCollisionConstraint::project(Configuration* configuration, Params params) {
+vector<Vector3f> StaticCollisionConstraint::getProjectValue(Configuration* configuration, Params params) {
     Vector3f p = configuration->estimatePositions[indices[0]];
 
     Vector3f pointToPosition = p - position;
     pointToPosition.normalize();
 
     // Check if constraint is already satisfied
-    if (pointToPosition.dot(normal) >= 0.0f) return;
-
-    if (showStatus) outStream << "Static collision:\n";
+    if (pointToPosition.dot(normal) >= 0.0f) return vector<Vector3f>();
 
     float a = (p - position).dot(normal);
     Vector3f b = (p - position) / ((p - position).norm());
 
     Vector3f displacement = a * b;
 
-    Vector3f& vertex = configuration->estimatePositions[indices[0]];
-
-    if (showStatus) outStream << indices[0] << ":\t" << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\t->\t";
-    vertex += displacement;
-    if (showStatus) outStream << vertex[0] << ' ' << vertex[1] << ' ' << vertex[2] << "\n\n";
+    vector<Vector3f> displacements = { displacement };
 
     isCollisionHappened = true;
-    if(params.useFriction)
-        commonFrictionProjecting(configuration, -pointToPosition.dot(normal), params.staticFrictionCoef, params.kineticFrictionCoef);
+    if (params.useFriction)
+        commonFrictionProjecting(configuration, -pointToPosition.dot(normal), params.staticFrictionCoef, params.kineticFrictionCoef, displacements);
+
+    return displacements;
 }
 
-void TriangleCollisionConstraint::project(Configuration* configuration, Params params) {
+vector<Vector3f> TriangleCollisionConstraint::getProjectValue(Configuration* configuration, Params params) {
     preCompute(configuration);
 
     Vector3f q = configuration->estimatePositions[indices[0]];
@@ -527,7 +542,7 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     Vector3f n = p2_.cross(p3_);
     float normalLength = n.norm();
     if (normalLength < EPSILONTHRESHOLD)
-        return;
+        return vector<Vector3f>();
 
     normal = n / normalLength;
 
@@ -535,38 +550,40 @@ void TriangleCollisionConstraint::project(Configuration* configuration, Params p
     cordMat << p2_, p3_, normal;
     Vector3f cord = cordMat.inverse() * q_;
 
-    if (cord[0] < 0.f || cord[1] < 0.f || cord[0] + cord[1]>1.f) return;
+    if (cord[0] < 0.f || cord[1] < 0.f || cord[0] + cord[1]>1.f) return vector<Vector3f>();
 
     float d = q_.dot(normal);
     float c = d - height;
 
-    if (c > 0) return;
+    if (c > 0) return vector<Vector3f>();
 
     Vector3f dc_p2 = (p3_.cross(q_) + d * normal.cross(p3_)) / normalLength;
     Vector3f dc_p3 = -(p2_.cross(q_) + d * normal.cross(p2_)) / normalLength;
     Vector3f dc_p1 = -dc_p2 - dc_p3 - normal;
     vector<Vector3f> partialDerivatives = { normal,dc_p1,dc_p2,dc_p3 };
 
-    commonOnProjectNormal(configuration, params.solverIterations, c, partialDerivatives);
+    vector<Vector3f> displacements = commonOnProjectNormal(configuration, params.solverIterations, c, partialDerivatives);
 
     isCollisionHappened = true;
     if (params.useFriction)
-        commonFrictionProjecting(configuration, -c, params.staticFrictionCoef, params.kineticFrictionCoef);
+        commonFrictionProjecting(configuration, -c, params.staticFrictionCoef, params.kineticFrictionCoef, displacements);
+    
+    return displacements;
 }
 
-void PointCollisionConstraint::project(Configuration* configuration, Params params) {
+vector<Vector3f> PointCollisionConstraint::getProjectValue(Configuration* configuration, Params params) {
 
     assert(cardinality == 2);
 
     float w1 = inverseMasses[0], w2 = inverseMasses[1];
-    if (w1 + w2 < EPSILONTHRESHOLD) return;
+    if (w1 + w2 < EPSILONTHRESHOLD) return vector<Vector3f>();
 
     Vector3f p1 = configuration->estimatePositions[indices[0]];
     Vector3f p2 = configuration->estimatePositions[indices[1]];
 
     float a = (p1 - p2).norm() - distance;
 
-    if (a > 0) return;
+    if (a > 0) return vector<Vector3f>();
 
     Vector3f n = (p1 - p2) / ((p1 - p2).norm() + EPSILON);
     Vector3f b = n * a;
@@ -575,11 +592,13 @@ void PointCollisionConstraint::project(Configuration* configuration, Params para
 
     vector<Vector3f> partialDerivatives = { n, -n };
     
-    commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
+    vector<Vector3f> displacements = commonOnProjectNormal(configuration, params.solverIterations, a, partialDerivatives);
 
     isCollisionHappened = true;
     if (params.useFriction)
-        commonFrictionProjecting(configuration, -a, params.staticFrictionCoef, params.kineticFrictionCoef);
+        commonFrictionProjecting(configuration, -a, params.staticFrictionCoef, params.kineticFrictionCoef, displacements);
+
+    return displacements;
 }
 
 pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, ConstitutiveMaterialModel modelType, float PoisonRatio, float YoungModulus)
@@ -666,7 +685,7 @@ pair<Matrix3f, float> calculateStressTensorAndStressEnergyDensity(Matrix3f F, Co
     return pair<Matrix3f, float>(U * P.asDiagonal() * V.transpose(), phi);
 }
 
-void TetrahedralConstraint::project(Configuration* configuration, Params params)
+vector<Vector3f> TetrahedralConstraint::getProjectValue(Configuration* configuration, Params params)
 {
     // calculate new shape
     Matrix3f newShape = Matrix3f::Zero();
@@ -700,14 +719,14 @@ void TetrahedralConstraint::project(Configuration* configuration, Params params)
         partialDerivatives[3] -= partialDerivatives[i];
     }
 
-    if (params.type == PBDType::normalPBD)
-        commonOnProjectNormal(configuration, params.solverIterations, energy, partialDerivatives);
-    else if (params.type == PBDType::XPBD)
-        commonOnProjectExtended(configuration, params.timeStep, energy, partialDerivatives, 1e-9);
+    if (params.type == PBDType::XPBD)
+        return commonOnProjectExtended(configuration, params.timeStep, energy, partialDerivatives, 1e-9);
+    else
+        return commonOnProjectNormal(configuration, params.solverIterations, energy, partialDerivatives);
 
 }
 
-void SPHDeformationConstraint::project(Configuration* configuration, Params params)
+vector<Vector3f> SPHDeformationConstraint::getProjectValue(Configuration* configuration, Params params)
 {
     /* first index: current vertex
     * following indices: adjacent vertices
@@ -754,13 +773,13 @@ void SPHDeformationConstraint::project(Configuration* configuration, Params para
         partialDerivatives[0] -= partialDerivatives[i];
     }
 
-    if (params.type == PBDType::normalPBD)
-        commonOnProjectNormal(configuration, params.solverIterations, phi, partialDerivatives);
-    else if (params.type == PBDType::XPBD)
-        commonOnProjectExtended(configuration, params.timeStep, phi, partialDerivatives, 1e-5);
+    if (params.type == PBDType::XPBD)
+        return commonOnProjectExtended(configuration, params.timeStep, phi, partialDerivatives, 1e-5);
+    else
+        return commonOnProjectNormal(configuration, params.solverIterations, phi, partialDerivatives);
 }
 
-void CollisionConstraint::commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef)
+void CollisionConstraint::commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef, vector<Vector3f>& originalDisplacements)
 {
     auto info = this->CollisionVertexIndices();
     for (int infoIndex = 0; infoIndex < info.size(); infoIndex++)
@@ -782,8 +801,8 @@ void CollisionConstraint::commonFrictionProjecting(Configuration* configuration,
             else
                 dxi = wi / (wi + wj) * tangentialRelativeDisplacement * min<float>(1.f, kineticFrictionCoef * penetrationDepth / tangentialNorm);
 
-            configuration->estimatePositions[i] -= dxi;
-            configuration->estimatePositions[j] += wj / (wi + wj) * dxi;
+            originalDisplacements[0] -= dxi;
+            originalDisplacements[infoIndex + 1] += wj / (wi + wj) * dxi;
         }
         else
         {
@@ -798,7 +817,7 @@ void CollisionConstraint::commonFrictionProjecting(Configuration* configuration,
             }
             else
                 dxi = tangentialRelativeDisplacement * min<float>(1.f, kineticFrictionCoef * penetrationDepth / tangentialNorm);
-            configuration->estimatePositions[i] -= dxi;
+            originalDisplacements[0] -= dxi;
         }
     }
 }

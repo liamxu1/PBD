@@ -74,11 +74,8 @@ public:
     Constraint(Mesh* mesh, int cardinality, bool useMeshCoef, bool showStatus = SHOW_PROCEDURE_INFO) :
         mesh(mesh), cardinality(cardinality), showStatus(showStatus), useMeshCoef(useMeshCoef){}
     void preCompute(Configuration* configuration);
-    virtual void project(Configuration* configuration, Params params) {}
-    virtual void betterProject(Configuration* configuration, Params params) {
-        preCompute(configuration);
-        project(configuration, params);
-    }
+    bool projectValue(Configuration* configuration, Params params, vector<Vector3f>& displacements);
+    void project(Configuration* configuration, Params params);
 
     int cardinality;
     vector<int> indices;
@@ -91,13 +88,17 @@ public:
     bool showStatus;
 
 protected:
+    /*
     // Put in needed parameters by coeffs
     // e.g.
     // In normal PBD condition, put in {k}
     // In XPBD condition, put in {compliance, damp factor}
-    void commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float> &coeffs = vector<float>());
-    void commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor = 1.f);
-    void commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance = 1e-7, float dampCompliance = 0.f);
+    */
+    vector<Vector3f> commonOnProject(Configuration* configuration, Params params, float C, vector<Vector3f>& partialDerivatives, vector<float> &coeffs = vector<float>());
+    vector<Vector3f> commonOnProjectNormal(Configuration* configuration, int iteration, float C, vector<Vector3f>& partialDerivatives, float factor = 1.f);
+    vector<Vector3f> commonOnProjectExtended(Configuration* configuration, float timeStep, float C, vector<Vector3f>& partialDerivatives, float compliance = 1e-7, float dampCompliance = 0.f);
+
+    virtual vector<Vector3f> getProjectValue(Configuration* configuration, Params params) { return vector<Vector3f>(); }
 
     bool useMeshCoef;
 
@@ -111,7 +112,7 @@ public:
         Constraint(mesh, cardinality, useMeshCoef), target(target) {
         type = ConstraintType::FixedConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     Vector3f target;
 
@@ -124,7 +125,7 @@ public:
         Constraint(mesh, cardinality, useMeshCoef), distance(distance) {
         type = ConstraintType::DistanceConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     float distance;
 };
@@ -136,7 +137,7 @@ public:
         Constraint(mesh, cardinality, useMeshCoef), angle(angle) {
         type = ConstraintType::BendConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     float angle;
 
@@ -147,7 +148,7 @@ class CollisionConstraint : public Constraint {
 public:
     CollisionConstraint(Mesh* mesh, int cardinality, Vector3f normal, bool useMeshCoef) :
             Constraint(mesh, cardinality, useMeshCoef), normal(normal) {}
-    virtual void project(Configuration* configuration, Params params) {}
+    virtual vector<Vector3f> getProjectValue(Configuration* configuration, Params params) { return vector<Vector3f>(); }
 
     Vector3f normal;
 
@@ -155,7 +156,7 @@ public:
     virtual vector<pair<int, int>> CollisionVertexIndices() = 0;
     bool isCollisionHappened = false;
 
-    void commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef);
+    void commonFrictionProjecting(Configuration* configuration, float penetrationDepth, float staticFrictionCoef, float kineticFrictionCoef, vector<Vector3f>& originalDisplacements);
 };
 
 class TetrahedralConstraint : public Constraint {
@@ -165,7 +166,7 @@ public:
         Constraint(mesh, cardinality, useMeshCoef), inversedOriginalShape(originalShape.inverse()), initialVolume(fabs(originalShape.determinant()) / 6.f) {
         type = ConstraintType::TetrahedralConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     Matrix3f inversedOriginalShape;
     float initialVolume;
@@ -178,7 +179,7 @@ public:
         CollisionConstraint(mesh, cardinality, normal, useMeshCoef), position(position) {
         type = ConstraintType::StaticCollisionConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     Vector3f position;
 
@@ -192,7 +193,7 @@ public:
         CollisionConstraint(mesh, cardinality, normal, useMeshCoef), height(height) {
         type = ConstraintType::TriangleCollisionConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     float height;
 
@@ -206,7 +207,7 @@ public:
         : CollisionConstraint(mesh, cardinality, Vector3f::Zero(), useMeshCoef), distance(distance){
         type = ConstraintType::PointCollisionConstraint;
     }
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
     float distance;
 
@@ -222,7 +223,7 @@ public:
         type = ConstraintType::SPHDeformationConstraint;
     }
 
-    void project(Configuration* configuration, Params params);
+    vector<Vector3f> getProjectValue(Configuration* configuration, Params params);
 
 
 };
