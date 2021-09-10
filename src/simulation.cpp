@@ -74,6 +74,7 @@ void Simulation::simulate(Configuration *configuration) {
         for (int i = 0; i < mesh->numVertices; i++) {
             configuration->estimatePositions[i + mesh->estimatePositionsOffset] = mesh->vertices[i] + timeStep * mesh->velocities[i];
             configuration->currentPositions[i + mesh->estimatePositionsOffset] = mesh->vertices[i];
+            configuration->updatedPositions[i + mesh->estimatePositionsOffset] = configuration->estimatePositions[i + mesh->estimatePositionsOffset];
         }
     }
 
@@ -171,6 +172,47 @@ void Simulation::simulate(Configuration *configuration) {
             {
                 //printf("%d\t%f\t%f\t%f\n", i, totalDisplacements[i][0], totalDisplacements[i][1], totalDisplacements[i][2]);
                 configuration->estimatePositions[i] += totalDisplacements[i] / constraintSize;
+            }
+
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < controllingConstraintSize; c++) {
+                configuration->controllingConstraints[c]->project(configuration, params);
+            }
+
+            #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
+            for (int c = 0; c < collisionConstraintSize; c++) {
+                configuration->collisionConstraints[c]->project(configuration, params);
+            }
+        }
+    }
+
+    else if (type == 3)
+    {
+        float constraintWeight = 100;
+        int numPositions = configuration->estimatePositions.size();
+        vector<Vector3f> totalDisplacements(numPositions, Vector3f::Zero());
+        vector<float> coefs(numPositions, 1.f / powf(params.timeStep, 2));
+        for (int iteration = 0; iteration < solverIterations; iteration++)
+        {
+            #pragma omp parallel for
+            for (int c = 0; c < constraintSize; c++) {
+                auto constraint = configuration->constraints[c];
+                vector<Vector3f> displacements;
+                if (constraint->projectValue(configuration, params, displacements))
+                {
+                    for (int i = 0; i < constraint->cardinality; i++)
+                    {
+                        coefs[constraint->indices[i]] += constraintWeight;
+                        totalDisplacements[constraint->indices[i]] += displacements[i];
+                    }
+                }
+            }
+
+            #pragma omp parallel for
+            for (int i = 0; i < numPositions; i++)
+            {
+                Vector3f displacement = (configuration->updatedPositions[i] - configuration->estimatePositions[i]) / powf(params.timeStep, 2) + totalDisplacements[i] * constraintWeight;
+                configuration->estimatePositions[i] += displacement / coefs[i];
             }
 
             #pragma omp parallel for // Improves performance but constraint solving order is not deterministic
@@ -427,7 +469,7 @@ void Simulation::renderGUI() {
     ImGui::Checkbox("##wireframe", &wireframe);
 
     ImGui::Text("PBDType");
-    ImGui::Combo("##PBDType", &type, "Normal\0XPBD\0Jacobi\0\0");
+    ImGui::Combo("##PBDType", &type, "Normal\0XPBD\0Jacobi(unstable)\0Projective Dynamics\0\0");
 
     ImGui::Text("Damp Factor");
     ImGui::SliderFloat("##dampFactor", &dampFactor, 0.0f, 0.2f, "%.3f");

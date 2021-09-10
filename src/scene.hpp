@@ -30,6 +30,7 @@ struct Configuration {
     vector<Mesh*> simulatedObjects;
     vector<Vector3f> estimatePositions;
     vector<Vector3f> currentPositions;
+    vector<Vector3f> updatedPositions;
     vector<Constraint*> constraints;
     vector<Constraint*> controllingConstraints;
     vector<CollisionConstraint*> collisionConstraints;

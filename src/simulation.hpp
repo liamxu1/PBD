@@ -42,6 +42,7 @@ public:
     /// 0: Normal PBD
     /// 1: XPBD
     /// 2: Jacobi
+    /// 3: Projective Dynamics
     /// </summary>
     int type = 0;
 

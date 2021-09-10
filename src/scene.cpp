@@ -45,8 +45,10 @@ void Scene::reset() {
     size_t numPositions = currentConfiguration->estimatePositions.size();
     currentConfiguration->estimatePositions.clear();
     currentConfiguration->currentPositions.clear();
+    currentConfiguration->updatedPositions.clear();
     currentConfiguration->estimatePositions.resize(numPositions, Vector3f::Zero());
     currentConfiguration->currentPositions.resize(numPositions, Vector3f::Zero());
+    currentConfiguration->updatedPositions.resize(numPositions, Vector3f::Zero());
 }
 
 void Scene::setConfiguration(int index) {
@@ -294,8 +296,6 @@ Configuration* Scene::setupConfigurationB() {
 Configuration* Scene::setupConfigurationC() {
     Configuration* configuration = new Configuration();
     configuration->allowMove = KeyBoardControlling::FIRST_OBJECT_ALL_MOVE;
-
-    addPlaneToConfiguration(configuration);
 
     Vector3f solidColour = { 1.0f, 1.0f, 1.0f };
     TriangularMesh* attachPoints = new TriangularMesh("", "../resources/models/sceneC/attachPoints.obj", solidColour, 0.0f);
@@ -706,6 +706,7 @@ void Scene::setupEstimatePositionOffsets(Configuration* configuration) {
 
     configuration->estimatePositions.resize((size_t) totalNumVertices, Vector3f::Zero());
     configuration->currentPositions.resize((size_t)totalNumVertices, Vector3f::Zero());
+    configuration->updatedPositions.resize((size_t)totalNumVertices, Vector3f::Zero());
     configuration->lambda.resize((size_t)totalNumVertices, 0.0f);
 
     for (Mesh* mesh : configuration->staticObjects) {
